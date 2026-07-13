@@ -8,6 +8,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "promote.yml"
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 AUTHORITIES = ROOT / "config" / "release-authorities.txt"
 VERIFY_UPSTREAM = ROOT / "scripts" / "verify_upstream_candidate.sh"
 APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
@@ -30,6 +31,22 @@ def test_public_workflow_is_reviewer_gated_and_serialized():
         "contents": "read",
         "id-token": "write",
     }
+
+
+def test_public_main_has_a_read_only_pull_request_check():
+    workflow = yaml.safe_load(CI_WORKFLOW.read_text(encoding="utf-8"))
+    triggers = workflow.get("on") or workflow.get(True)
+    commands = "\n".join(
+        str(step.get("run", ""))
+        for step in workflow["jobs"]["contract"]["steps"]
+        if isinstance(step, dict)
+    )
+
+    assert "pull_request" in triggers
+    assert triggers["push"]["branches"] == ["main"]
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "pytest" in commands
+    assert "bash -n scripts/*.sh" in commands
 
 
 def test_public_workflow_uses_read_only_app_before_gcp_authentication():
