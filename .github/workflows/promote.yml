@@ -7,6 +7,11 @@ on:
         description: Exact private release-candidate tag
         required: true
         type: string
+      authority_probe:
+        description: Verify identity boundaries without approving a release
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -42,11 +47,18 @@ jobs:
           permission-pull-requests: read
 
       - name: Validate exact private candidate
+        if: "!inputs.authority_probe"
         id: candidate
         env:
           GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: scripts/verify_upstream_candidate.sh >> "${GITHUB_OUTPUT}"
+
+      - name: Probe read-only private-upstream boundary
+        if: inputs.authority_probe
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+        run: scripts/probe_upstream_app.sh
 
       - name: Authenticate as Cloud Build approver
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
@@ -59,7 +71,12 @@ jobs:
         with:
           version: ">= 540.0.0"
 
+      - name: Probe approver-only GCP boundary
+        if: inputs.authority_probe
+        run: scripts/probe_gcp_authority.sh
+
       - name: Approve exact fixed batch
+        if: "!inputs.authority_probe"
         env:
           RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
           COMMIT_SHA: ${{ steps.candidate.outputs.sha }}

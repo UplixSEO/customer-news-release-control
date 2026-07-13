@@ -15,6 +15,14 @@ exactly 17 already-pending fixed Cloud Build triggers. It cannot create builds,
 invoke or edit triggers, upload source, impersonate the build service account,
 or cancel builds.
 
+For a least-privilege audit without a release, dispatch the same protected
+workflow with `authority_probe=true` and any syntactically inert `release_tag`
+input. After the production reviewer approves the environment, the probe
+verifies the App's exact one-repository/read-only boundary and the federated
+identity's effective permissions. Candidate validation and the 17-build
+approval step are skipped in this mode, so no build, release, or deployment is
+started.
+
 Uplix credentials are stored only in Uplix-owned GitHub/GCP control planes.
 Léonard's personal 1Password stack is not a dependency or recovery store.
 
