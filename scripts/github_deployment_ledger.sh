@@ -33,10 +33,11 @@ case "${OPERATION}" in
             mode: $deployment.payload.mode,
             state: $status.state,
             superseded_by: (
-              try (
+              [
                 ($status.description // "")
                 | capture("superseded_by=(?<sha>[0-9a-f]{40})").sha
-              ) catch null
+              ]
+              | .[0] // null
             )
           }
         ')"
