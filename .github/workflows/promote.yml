@@ -1,0 +1,65 @@
+name: Promote Customer News release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Exact private release-candidate tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-news-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Validate and approve fixed release batch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout public controller
+        uses: actions/checkout@v4
+
+      - name: Mint read-only private-upstream token
+        id: upstream-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.UPSTREAM_READ_APP_ID }}
+          private-key: ${{ secrets.UPSTREAM_READ_APP_PRIVATE_KEY }}
+          owner: UplixSEO
+          repositories: Uplix-Agents
+          permission-actions: read
+          permission-contents: read
+          permission-metadata: read
+
+      - name: Validate exact private candidate
+        id: candidate
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: scripts/verify_upstream_candidate.sh >> "${GITHUB_OUTPUT}"
+
+      - name: Authenticate as Cloud Build approver
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_APPROVER_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_APPROVER_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: ">= 540.0.0"
+
+      - name: Approve exact fixed batch
+        env:
+          RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
+          COMMIT_SHA: ${{ steps.candidate.outputs.sha }}
+        run: scripts/approve_pending_release.sh

@@ -1,0 +1,18 @@
+# Exact approval-gated Cloud Build trigger names. Public control metadata only.
+analysis-summarizer-prod
+analyst-ui-prod
+autopilot-rollup-job-prod
+backfill-coverage-release
+backfill-prod
+cn-repin-autopilot-backfill-queue-prod
+cn-repin-backfill-autopilot-prod
+cn-repin-backfill-driver-execplan20
+cn-repin-detector-runner-prod
+cn-repin-serving-completeness-monitor-prod
+cn-repin-serving-reconciler-prod
+cn-repin-token-broker-prod
+cn-repin-upx306-onboarding-capture-prod
+cn-repin-upx306-retroactive-gate-prod
+cn-repin-upx414-query-capture-prod
+daily-prod
+orchestrator-prod

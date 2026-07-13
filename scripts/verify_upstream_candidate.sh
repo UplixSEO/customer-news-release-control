@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Validate an exact private-upstream release tag and its successful guard run.
+
+set -euo pipefail
+
+UPSTREAM_REPOSITORY="${UPSTREAM_REPOSITORY:-UplixSEO/Uplix-Agents}"
+RELEASE_TAG="${RELEASE_TAG:-${1:-}}"
+
+if [[ -z "${GH_TOKEN:-}" ]]; then
+  echo "ERROR: GH_TOKEN from the read-only upstream GitHub App is required." >&2
+  exit 1
+fi
+if [[ ! "${RELEASE_TAG}" =~ ^customer-news-release/([0-9]+)-([0-9a-f]{40})$ ]]; then
+  echo "ERROR: release_tag must be customer-news-release/<run-id>-<40-hex-sha>." >&2
+  exit 1
+fi
+
+RUN_ID="${BASH_REMATCH[1]}"
+EXPECTED_SHA="${BASH_REMATCH[2]}"
+
+ref_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
+TAG_OBJECT_TYPE="$(jq -r '.object.type' <<<"${ref_json}")"
+TAG_OBJECT_SHA="$(jq -r '.object.sha' <<<"${ref_json}")"
+if [[ "${TAG_OBJECT_TYPE}" != "tag" || ! "${TAG_OBJECT_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: upstream release candidate must be an annotated tag." >&2
+  exit 1
+fi
+
+tag_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/tags/${TAG_OBJECT_SHA}")"
+tag_commit_type="$(jq -r '.object.type' <<<"${tag_json}")"
+tag_commit_sha="$(jq -r '.object.sha' <<<"${tag_json}")"
+if [[ "${tag_commit_type}" != "commit" || "${tag_commit_sha}" != "${EXPECTED_SHA}" ]]; then
+  echo "ERROR: annotated tag target does not match the encoded SHA." >&2
+  exit 1
+fi
+
+run_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/actions/runs/${RUN_ID}")"
+jq -e \
+  --arg sha "${EXPECTED_SHA}" \
+  --arg repository "${UPSTREAM_REPOSITORY}" '
+    .head_sha == $sha
+    and .head_branch == "main"
+    and .event == "push"
+    and .status == "completed"
+    and .conclusion == "success"
+    and .path == ".github/workflows/customer-news-cloudbuild-guard.yml"
+    and .head_repository.full_name == $repository
+    and .head_repository.private == true
+  ' <<<"${run_json}" >/dev/null || {
+    echo "ERROR: upstream workflow run is not the successful private main guard for this SHA." >&2
+    exit 1
+  }
+
+printf 'sha=%s\nrun_id=%s\nrelease_tag=%s\n' \
+  "${EXPECTED_SHA}" "${RUN_ID}" "${RELEASE_TAG}"
