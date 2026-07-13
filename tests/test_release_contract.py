@@ -13,6 +13,8 @@ CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 AUTHORITIES = ROOT / "config" / "release-authorities.txt"
 VERIFY_UPSTREAM = ROOT / "scripts" / "verify_upstream_candidate.sh"
 APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
+PROBE_UPSTREAM_APP = ROOT / "scripts" / "probe_upstream_app.sh"
+PROBE_GCP_AUTHORITY = ROOT / "scripts" / "probe_gcp_authority.sh"
 
 
 def test_every_github_action_is_pinned_to_an_immutable_commit():
@@ -89,6 +91,80 @@ def test_public_workflow_uses_read_only_app_before_gcp_authentication():
     lowered = workflow_text.lower()
     for marker in forbidden:
         assert marker not in lowered
+
+
+def test_public_workflow_has_a_non_mutating_authority_probe_mode():
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    triggers = workflow.get("on") or workflow.get(True)
+    inputs = triggers["workflow_dispatch"]["inputs"]
+    steps = workflow["jobs"]["promote"]["steps"]
+    steps_by_name = {step["name"]: step for step in steps}
+
+    assert inputs["authority_probe"] == {
+        "description": "Verify identity boundaries without approving a release",
+        "required": False,
+        "default": False,
+        "type": "boolean",
+    }
+    assert steps_by_name["Probe read-only private-upstream boundary"]["if"] == (
+        "inputs.authority_probe"
+    )
+    assert steps_by_name["Probe read-only private-upstream boundary"]["run"] == (
+        "scripts/probe_upstream_app.sh"
+    )
+    assert steps_by_name["Probe approver-only GCP boundary"]["if"] == (
+        "inputs.authority_probe"
+    )
+    assert steps_by_name["Probe approver-only GCP boundary"]["run"] == (
+        "scripts/probe_gcp_authority.sh"
+    )
+    assert steps_by_name["Validate exact private candidate"]["if"] == (
+        "!inputs.authority_probe"
+    )
+    assert steps_by_name["Approve exact fixed batch"]["if"] == (
+        "!inputs.authority_probe"
+    )
+
+
+def test_authority_probe_scripts_are_read_only_and_fail_closed():
+    app_probe = PROBE_UPSTREAM_APP.read_text(encoding="utf-8")
+    gcp_probe = PROBE_GCP_AUTHORITY.read_text(encoding="utf-8")
+
+    assert "installation/repositories" in app_probe
+    assert "apps/uplix-customer-news-release-proof" in app_probe
+    assert "4290359" in app_probe
+    assert "UplixSEO/Uplix-Agents" in app_probe
+    assert "UplixSEO/uplixOS" in app_probe
+    assert '"actions":"read"' in app_probe
+    assert '"contents":"read"' in app_probe
+    assert '"metadata":"read"' in app_probe
+    assert '"pull_requests":"read"' in app_probe
+
+    required_gcp_markers = (
+        "cloudbuild.builds.approve",
+        "cloudbuild.builds.create",
+        "cloudbuild.builds.update",
+        "cloudbuild.triggers.create",
+        "cloudbuild.triggers.delete",
+        "cloudbuild.triggers.update",
+        "iam.serviceAccounts.actAs",
+        "storage.objects.create",
+        "resourcemanager.projects.setIamPolicy",
+    )
+    assert all(marker in gcp_probe for marker in required_gcp_markers)
+    assert "cancellation is gated by cloudbuild.builds.update" in gcp_probe
+    assert "triggers.run is gated by cloudbuild.builds.create" in gcp_probe
+
+    forbidden = (
+        "gcloud builds submit",
+        "gcloud builds triggers run",
+        "gcloud builds cancel",
+        "gcloud beta builds approve",
+        "gcloud projects add-iam-policy-binding",
+        "gcloud storage cp",
+    )
+    combined = f"{app_probe}\n{gcp_probe}".lower()
+    assert all(marker not in combined for marker in forbidden)
 
 
 def test_upstream_verifier_binds_tag_sha_and_successful_private_run():
