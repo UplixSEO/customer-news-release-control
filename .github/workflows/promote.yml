@@ -190,6 +190,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
         with:
           version: ">= 540.0.0"
+          install_components: beta
 
       - name: Probe approver-only GCP boundary
         if: inputs.authority_probe
