@@ -9,7 +9,8 @@ The private repository's successful `main` guard creates an annotated tag named
 `customer-news-release/<run-id>-<40-hex-sha>`. A reviewer dispatches
 `promote.yml` with that exact tag. The production environment releases a
 read-only GitHub App key; the workflow verifies the private tag and successful
-guard run, exchanges OIDC for the approver-only GCP identity, then approves
+guard run plus the unique merged `dev`-to-`main` PR for that SHA, exchanges
+OIDC for the approver-only GCP identity, then approves
 exactly 17 already-pending fixed Cloud Build triggers. It cannot create builds,
 invoke or edit triggers, upload source, impersonate the build service account,
 or cancel builds.
@@ -31,3 +32,7 @@ The public surface is intentionally limited to generic workflow code, fixed
 trigger names, the approved private commit SHA, release timing/status, and the
 reviewer recorded by GitHub. It must never publish private source, customer
 names or identifiers, Cloud Build payloads, logs, or artifacts.
+
+The private-upstream GitHub App is installed only on `Uplix-Agents` with
+metadata, Actions, Contents, and Pull requests set to read-only. Webhooks and
+all write permissions remain disabled.

@@ -39,6 +39,7 @@ jobs:
           permission-actions: read
           permission-contents: read
           permission-metadata: read
+          permission-pull-requests: read
 
       - name: Validate exact private candidate
         id: candidate

@@ -73,6 +73,7 @@ def test_public_workflow_uses_read_only_app_before_gcp_authentication():
     assert app_index < auth_index
     assert "UPSTREAM_READ_APP_PRIVATE_KEY" in workflow_text
     assert "UPSTREAM_READ_APP_ID" in workflow_text
+    assert "permission-pull-requests: read" in workflow_text
     assert "scripts/verify_upstream_candidate.sh" in workflow_text
     assert "scripts/approve_pending_release.sh" in workflow_text
 
@@ -102,6 +103,10 @@ def test_upstream_verifier_binds_tag_sha_and_successful_private_run():
     assert ".event" in script
     assert "git/ref/tags/${RELEASE_TAG}" in script
     assert "git/tags/${TAG_OBJECT_SHA}" in script
+    assert "commits/${EXPECTED_SHA}/pulls" in script
+    assert '.base.ref == "main"' in script
+    assert '.head.ref == "dev"' in script
+    assert ".merge_commit_sha == $sha" in script
 
 
 def test_approval_script_accepts_only_exact_seventeen_pending_builds():
