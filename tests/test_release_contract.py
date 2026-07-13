@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import os
+import re
 import subprocess
 
 import yaml
@@ -12,6 +13,18 @@ CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 AUTHORITIES = ROOT / "config" / "release-authorities.txt"
 VERIFY_UPSTREAM = ROOT / "scripts" / "verify_upstream_candidate.sh"
 APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
+
+
+def test_every_github_action_is_pinned_to_an_immutable_commit():
+    for workflow_path in (WORKFLOW, CI_WORKFLOW):
+        workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+        for job in workflow["jobs"].values():
+            for step in job.get("steps", []):
+                action = str(step.get("uses", ""))
+                if action:
+                    assert re.fullmatch(r"[^@]+@[0-9a-f]{40}", action), (
+                        f"{workflow_path}: mutable action reference {action}"
+                    )
 
 
 def test_public_workflow_is_reviewer_gated_and_serialized():
