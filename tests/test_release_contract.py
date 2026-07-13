@@ -10,6 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "promote.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+NEGATIVE_WIF_WORKFLOW = ROOT / ".github" / "workflows" / "wif-negative.yml"
 AUTHORITIES = ROOT / "config" / "release-authorities.txt"
 VERIFY_UPSTREAM = ROOT / "scripts" / "verify_upstream_candidate.sh"
 APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
@@ -18,7 +19,7 @@ PROBE_GCP_AUTHORITY = ROOT / "scripts" / "probe_gcp_authority.sh"
 
 
 def test_every_github_action_is_pinned_to_an_immutable_commit():
-    for workflow_path in (WORKFLOW, CI_WORKFLOW):
+    for workflow_path in (WORKFLOW, CI_WORKFLOW, NEGATIVE_WIF_WORKFLOW):
         workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
         for job in workflow["jobs"].values():
             for step in job.get("steps", []):
@@ -106,6 +107,22 @@ def test_public_workflow_has_a_non_mutating_authority_probe_mode():
         "default": False,
         "type": "boolean",
     }
+    assert inputs["nonproduction_wif_probe"] == {
+        "description": "Prove the exact workflow is denied outside production",
+        "required": False,
+        "default": False,
+        "type": "boolean",
+    }
+    assert workflow["jobs"]["promote"]["if"] == (
+        "!inputs.nonproduction_wif_probe"
+    )
+    nonproduction = workflow["jobs"]["negative-nonproduction"]
+    assert nonproduction["if"] == "inputs.nonproduction_wif_probe"
+    assert nonproduction["environment"] == "authority-probe-nonproduction"
+    assert nonproduction["permissions"] == {
+        "contents": "read",
+        "id-token": "write",
+    }
     assert steps_by_name["Probe read-only private-upstream boundary"]["if"] == (
         "inputs.authority_probe"
     )
@@ -165,6 +182,38 @@ def test_authority_probe_scripts_are_read_only_and_fail_closed():
     )
     combined = f"{app_probe}\n{gcp_probe}".lower()
     assert all(marker not in combined for marker in forbidden)
+
+
+def test_negative_wif_workflow_proves_pr_and_other_workflow_denials():
+    workflow_text = NEGATIVE_WIF_WORKFLOW.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(workflow_text)
+    triggers = workflow.get("on") or workflow.get(True)
+
+    assert "pull_request" in triggers
+    assert "workflow_dispatch" in triggers
+    assert workflow["permissions"] == {"contents": "read"}
+
+    other = workflow["jobs"]["other-workflow-production"]
+    assert other["environment"] == "production"
+    assert other["permissions"] == {"contents": "read", "id-token": "write"}
+    pull_request = workflow["jobs"]["pull-request"]
+    assert pull_request["permissions"] == {"contents": "read", "id-token": "write"}
+
+    for job in (other, pull_request):
+        auth = next(step for step in job["steps"] if step.get("id") == "denied-auth")
+        assert auth["continue-on-error"] is True
+        assertion = next(step for step in job["steps"] if step.get("name") == "Assert exchange denied")
+        assert "steps.denied-auth.outcome" in assertion["run"]
+        assert "failure" in assertion["run"]
+
+    forbidden = (
+        "gcloud builds",
+        "gcloud iam",
+        "gcloud storage",
+        "gh api",
+    )
+    lowered = workflow_text.lower()
+    assert all(marker not in lowered for marker in forbidden)
 
 
 def test_upstream_verifier_binds_tag_sha_and_successful_private_run():
