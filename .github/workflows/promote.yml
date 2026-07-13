@@ -17,6 +17,24 @@ on:
         required: false
         default: false
         type: boolean
+      mode:
+        description: Promote current head or compatibility-approved rollback
+        required: true
+        default: promote
+        type: choice
+        options:
+          - promote
+          - rollback
+      compatibility_approved:
+        description: Confirm rollback compatibility was reviewed
+        required: false
+        default: false
+        type: boolean
+      rollback_reason:
+        description: Required rollback reason or ticket
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -30,10 +48,11 @@ jobs:
     if: "!inputs.nonproduction_wif_probe"
     name: Validate and approve fixed release batch
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 120
     environment: production
     permissions:
       contents: read
+      deployments: write
       id-token: write
     steps:
       - name: Checkout public controller
@@ -60,6 +79,94 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: scripts/verify_upstream_candidate.sh >> "${GITHUB_OUTPUT}"
 
+      - name: Read current private main
+        if: "!inputs.authority_probe"
+        id: current-head
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+        run: |
+          sha="$(gh api repos/UplixSEO/Uplix-Agents/git/ref/heads/main --jq '.object.sha')"
+          [[ "${sha}" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Read Deployment ledger
+        if: "!inputs.authority_probe"
+        id: ledger
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          path="${RUNNER_TEMP}/customer-news-ledger.json"
+          scripts/github_deployment_ledger.sh snapshot > "${path}"
+          echo "path=${path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Decide create, resume, or supersede
+        if: "!inputs.authority_probe"
+        id: decision
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          CURRENT_HEAD_SHA: ${{ steps.current-head.outputs.sha }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
+          RELEASE_MODE: ${{ inputs.mode }}
+          COMPATIBILITY_APPROVED: ${{ inputs.compatibility_approved }}
+          ROLLBACK_REASON: ${{ inputs.rollback_reason }}
+          LEDGER_PATH: ${{ steps.ledger.outputs.path }}
+        run: |
+          ancestry_path="${RUNNER_TEMP}/customer-news-ancestry.json"
+          scripts/collect_upstream_ancestry.sh \
+            "${CANDIDATE_SHA}" "${CURRENT_HEAD_SHA}" "${LEDGER_PATH}" > "${ancestry_path}"
+          jq -n \
+            --arg candidate_sha "${CANDIDATE_SHA}" \
+            --arg current_head_sha "${CURRENT_HEAD_SHA}" \
+            --arg release_tag "${RELEASE_TAG}" \
+            --arg mode "${RELEASE_MODE}" \
+            --argjson entries "$(cat "${LEDGER_PATH}")" \
+            --argjson ancestry "$(cat "${ancestry_path}")" \
+            --argjson compatibility_approved "${COMPATIBILITY_APPROVED}" \
+            --arg rollback_reason "${ROLLBACK_REASON}" '{
+              candidate_sha: $candidate_sha,
+              current_head_sha: $current_head_sha,
+              release_tag: $release_tag,
+              mode: $mode,
+              entries: $entries,
+              ancestry: $ancestry,
+              compatibility_approved: $compatibility_approved,
+              rollback_reason: $rollback_reason
+            }' | scripts/release_ledger.py decide > "${RUNNER_TEMP}/decision.json"
+          echo "action=$(jq -r '.action' "${RUNNER_TEMP}/decision.json")" >> "${GITHUB_OUTPUT}"
+          echo "deployment_id=$(jq -r '.deployment_id // empty' "${RUNNER_TEMP}/decision.json")" >> "${GITHUB_OUTPUT}"
+          echo "superseded_by=$(jq -r '.superseded_by // empty' "${RUNNER_TEMP}/decision.json")" >> "${GITHUB_OUTPUT}"
+          echo "ancestry_path=${ancestry_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create or resume GitHub Deployment
+        if: "!inputs.authority_probe"
+        id: deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ steps.decision.outputs.action }}
+          EXISTING_DEPLOYMENT_ID: ${{ steps.decision.outputs.deployment_id }}
+          SUPERSEDED_BY: ${{ steps.decision.outputs.superseded_by }}
+          UPSTREAM_SHA: ${{ steps.candidate.outputs.sha }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
+          RELEASE_MODE: ${{ inputs.mode }}
+        run: |
+          deployment_id="${EXISTING_DEPLOYMENT_ID}"
+          if [[ "${ACTION}" == "create" || "${ACTION}" == "superseded" ]]; then
+            deployment_id="$(scripts/github_deployment_ledger.sh create)"
+          fi
+          [[ "${deployment_id}" =~ ^[0-9]+$ ]]
+          proceed=false
+          if [[ "${ACTION}" == "create" || "${ACTION}" == "resume" ]]; then
+            proceed=true
+            DEPLOYMENT_ID="${deployment_id}" DEPLOYMENT_STATE=in_progress \
+              scripts/github_deployment_ledger.sh status
+          elif [[ "${ACTION}" == "superseded" ]]; then
+            DEPLOYMENT_ID="${deployment_id}" DEPLOYMENT_STATE=inactive \
+              SUPERSEDED_BY="${SUPERSEDED_BY}" scripts/github_deployment_ledger.sh status
+          fi
+          echo "deployment_id=${deployment_id}" >> "${GITHUB_OUTPUT}"
+          echo "proceed=${proceed}" >> "${GITHUB_OUTPUT}"
+
       - name: Probe read-only private-upstream boundary
         if: inputs.authority_probe
         env:
@@ -67,12 +174,14 @@ jobs:
         run: scripts/probe_upstream_app.sh
 
       - name: Authenticate as Cloud Build approver
+        if: inputs.authority_probe || steps.deployment.outputs.proceed == 'true'
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: ${{ vars.GCP_APPROVER_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_APPROVER_SERVICE_ACCOUNT }}
 
       - name: Set up Google Cloud CLI
+        if: inputs.authority_probe || steps.deployment.outputs.proceed == 'true'
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
         with:
           version: ">= 540.0.0"
@@ -81,12 +190,79 @@ jobs:
         if: inputs.authority_probe
         run: scripts/probe_gcp_authority.sh
 
+      - name: Re-read current private main before approval
+        if: steps.deployment.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          EXPECTED_CURRENT_HEAD: ${{ steps.current-head.outputs.sha }}
+        run: |
+          current="$(gh api repos/UplixSEO/Uplix-Agents/git/ref/heads/main --jq '.object.sha')"
+          [[ "${current}" == "${EXPECTED_CURRENT_HEAD}" ]] || {
+            echo "ERROR: private main advanced during release preparation." >&2
+            exit 1
+          }
+
+      - name: Wait for prior release builds to become terminal
+        if: steps.deployment.outputs.proceed == 'true'
+        env:
+          LEDGER_PATH: ${{ steps.ledger.outputs.path }}
+          CURRENT_RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
+        run: |
+          jq -r --arg current "${CURRENT_RELEASE_TAG}" '
+            .[]
+            | select(.release_tag != $current)
+            | select(.state == "pending" or .state == "in_progress")
+            | [.release_tag, .sha]
+            | @tsv
+          ' "${LEDGER_PATH}" | while IFS=$'\t' read -r tag sha; do
+            scripts/wait_release_batch.sh terminal "${tag}" "${sha}"
+          done
+
       - name: Approve exact fixed batch
-        if: "!inputs.authority_probe"
+        if: steps.deployment.outputs.proceed == 'true'
         env:
           RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
           COMMIT_SHA: ${{ steps.candidate.outputs.sha }}
         run: scripts/approve_pending_release.sh
+
+      - name: Wait for exact release batch success
+        if: steps.deployment.outputs.proceed == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
+          COMMIT_SHA: ${{ steps.candidate.outputs.sha }}
+        run: scripts/wait_release_batch.sh success "${RELEASE_TAG}" "${COMMIT_SHA}"
+
+      - name: Mark GitHub Deployment successful
+        if: steps.deployment.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+          DEPLOYMENT_STATE: success
+          DEPLOYMENT_DESCRIPTION: Exact 17-build batch succeeded
+        run: scripts/github_deployment_ledger.sh status
+
+      - name: Mark proven ancestors inactive
+        if: steps.deployment.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUCCESSFUL_SHA: ${{ steps.candidate.outputs.sha }}
+          LEDGER_PATH: ${{ steps.ledger.outputs.path }}
+          ANCESTRY_PATH: ${{ steps.decision.outputs.ancestry_path }}
+        run: |
+          jq -n \
+            --arg successful_sha "${SUCCESSFUL_SHA}" \
+            --argjson entries "$(cat "${LEDGER_PATH}")" \
+            --argjson ancestry "$(cat "${ANCESTRY_PATH}")" '{
+              successful_sha: $successful_sha,
+              entries: $entries,
+              ancestry: $ancestry,
+              release_succeeded: true
+            }' | scripts/release_ledger.py supersede | jq -c '.[]' | while read -r row; do
+              DEPLOYMENT_ID="$(jq -r '.deployment_id' <<<"${row}")" \
+                DEPLOYMENT_STATE=inactive \
+                SUPERSEDED_BY="$(jq -r '.superseded_by' <<<"${row}")" \
+                scripts/github_deployment_ledger.sh status
+            done
 
   negative-nonproduction:
     if: inputs.nonproduction_wif_probe
