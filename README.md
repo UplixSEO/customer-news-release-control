@@ -52,3 +52,14 @@ names or identifiers, Cloud Build payloads, logs, or artifacts.
 The private-upstream GitHub App is installed only on `Uplix-Agents` with
 metadata, Actions, Contents, and Pull requests set to read-only. Webhooks and
 all write permissions remain disabled.
+
+## Release ledger contract
+
+Production convergence uses GitHub Deployments in this public repository as
+the native append-only ledger. The deterministic decision helper in
+`scripts/release_ledger.py` never calls an API: it consumes normalized
+Deployment state and upstream ancestry proof, then returns `create`, `resume`,
+`already_succeeded`, or `superseded`. An interrupted release resumes the same
+Deployment ID; an older candidate becomes inactive only after a proven
+descendant succeeds. Rollback creates a new release-tag epoch and is accepted
+only for a compatibility-approved ancestor with a non-empty reason.
