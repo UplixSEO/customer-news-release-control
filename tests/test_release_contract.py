@@ -193,6 +193,7 @@ def test_authority_probe_scripts_are_read_only_and_fail_closed():
         "gcloud builds triggers run",
         "gcloud builds cancel",
         "gcloud beta builds approve",
+        "gcloud alpha builds approve",
         "gcloud projects add-iam-policy-binding",
         "gcloud storage cp",
     )
@@ -402,6 +403,7 @@ def test_release_batch_waiter_is_read_only_and_uses_exact_state_validator():
         "gcloud builds submit",
         "gcloud builds triggers run",
         "gcloud beta builds approve",
+        "gcloud alpha builds approve",
         "gcloud builds cancel",
     )
     assert all(marker not in script for marker in forbidden)
@@ -439,7 +441,7 @@ def test_approval_script_accepts_only_exact_seventeen_pending_builds():
     assert "COMMIT_SHA" in script
     assert "TAG_NAME" in script
     assert "TRIGGER_NAME" in script
-    assert "gcloud beta builds approve" in script
+    assert "gcloud alpha builds approve" in script
     assert "--page-size=1000" in script
     assert "gcloud builds submit" not in script
     assert "gcloud builds triggers run" not in script
@@ -450,7 +452,7 @@ def test_approval_script_accepts_only_exact_seventeen_pending_builds():
         for step in workflow["jobs"]["promote"]["steps"]
         if step["name"] == "Set up Google Cloud CLI"
     )
-    assert setup["with"]["install_components"] == "beta"
+    assert setup["with"]["install_components"] == "alpha"
 
 
 def _authority_names():
@@ -476,7 +478,7 @@ if args[:2] == ["builds", "list"]:
 elif args[:2] == ["builds", "describe"]:
     build_id = args[2]
     print(json.dumps(next(row for row in builds if row["id"] == build_id)))
-elif args[:3] == ["beta", "builds", "approve"]:
+elif args[:3] == ["alpha", "builds", "approve"]:
     with open(os.environ["FAKE_APPROVAL_LOG"], "a", encoding="utf-8") as handle:
         handle.write(args[3] + "\\n")
 else:
@@ -548,10 +550,10 @@ def test_approval_script_approves_every_fixed_pending_build_once(tmp_path):
     approvals = approval_log.read_text(encoding="utf-8").splitlines()
     assert len(approvals) == 17
     assert len(set(approvals)) == 17
-    assert set(approvals) == {f"build-{index}" for index in range(17)}
-    script = APPROVE_BUILDS.read_text(encoding="utf-8")
-    assert '--project="${PROJECT_ID}"' in script
-    assert '--region="${REGION}"' in script
+    assert set(approvals) == {
+        f"projects/customer-news-475010/locations/europe-west1/builds/build-{index}"
+        for index in range(17)
+    }
 
 
 def test_approval_script_rejects_unknown_release_build(tmp_path):
