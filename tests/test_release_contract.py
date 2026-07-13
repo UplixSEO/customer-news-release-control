@@ -278,6 +278,48 @@ def test_deployment_ledger_client_is_a_thin_native_github_api_surface():
     assert "https://" not in script
 
 
+def test_deployment_ledger_snapshot_parses_supersession_with_runner_jq(tmp_path):
+    fake_gh = tmp_path / "gh"
+    fake_gh.write_text(
+        """#!/usr/bin/env python3
+import json
+import sys
+
+path = next(arg for arg in sys.argv if arg.startswith("repos/"))
+if path.endswith("/statuses"):
+    print(json.dumps({"state": "inactive", "description": "superseded_by=" + "b" * 40}))
+else:
+    print(json.dumps([{
+        "id": 123,
+        "payload": {
+            "schema": "customer_news_release_v1",
+            "upstream_sha": "a" * 40,
+            "release_tag": "customer-news-release/123-promote-" + "a" * 40,
+            "mode": "promote"
+        }
+    }]))
+""",
+        encoding="utf-8",
+    )
+    fake_gh.chmod(0o755)
+    completed = subprocess.run(
+        [str(DEPLOYMENT_LEDGER), "snapshot"],
+        cwd=ROOT,
+        env={
+            **os.environ,
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "GH_TOKEN": "test-token",
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    snapshot = json.loads(completed.stdout)
+    assert snapshot[0]["deployment_id"] == 123
+    assert snapshot[0]["superseded_by"] == "b" * 40
+
+
 def test_success_is_published_only_after_distinct_read_only_runtime_proof():
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     promote_steps = {step["name"]: step for step in workflow["jobs"]["promote"]["steps"]}
