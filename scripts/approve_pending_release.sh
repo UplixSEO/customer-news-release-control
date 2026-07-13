@@ -36,7 +36,8 @@ for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
     --region="${REGION}" \
     --filter="substitutions.TAG_NAME=${RELEASE_TAG} AND substitutions.COMMIT_SHA=${COMMIT_SHA}" \
     --format=json \
-    --limit=100)"
+    --limit=1000 \
+    --page-size=1000)"
   release_builds="$(jq -c \
     --arg tag "${RELEASE_TAG}" \
     --arg sha "${COMMIT_SHA}" '

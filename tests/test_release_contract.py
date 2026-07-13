@@ -338,6 +338,7 @@ def test_release_batch_waiter_is_read_only_and_uses_exact_state_validator():
     script = WAIT_RELEASE_BATCH.read_text(encoding="utf-8")
 
     assert "gcloud builds list" in script
+    assert "--page-size=1000" in script
     assert "scripts/release_build_state.py" in script
     assert "--phase" in script
     forbidden = (
@@ -382,8 +383,17 @@ def test_approval_script_accepts_only_exact_seventeen_pending_builds():
     assert "TAG_NAME" in script
     assert "TRIGGER_NAME" in script
     assert "gcloud beta builds approve" in script
+    assert "--page-size=1000" in script
     assert "gcloud builds submit" not in script
     assert "gcloud builds triggers run" not in script
+
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    setup = next(
+        step
+        for step in workflow["jobs"]["promote"]["steps"]
+        if step["name"] == "Set up Google Cloud CLI"
+    )
+    assert setup["with"]["install_components"] == "beta"
 
 
 def _authority_names():
