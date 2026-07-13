@@ -548,7 +548,10 @@ def test_approval_script_approves_every_fixed_pending_build_once(tmp_path):
     approvals = approval_log.read_text(encoding="utf-8").splitlines()
     assert len(approvals) == 17
     assert len(set(approvals)) == 17
-    assert all("/locations/europe-west1/builds/build-" in row for row in approvals)
+    assert set(approvals) == {f"build-{index}" for index in range(17)}
+    script = APPROVE_BUILDS.read_text(encoding="utf-8")
+    assert '--project="${PROJECT_ID}"' in script
+    assert '--region="${REGION}"' in script
 
 
 def test_approval_script_rejects_unknown_release_build(tmp_path):

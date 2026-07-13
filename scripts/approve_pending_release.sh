@@ -97,7 +97,9 @@ for trigger in "${EXPECTED_AUTHORITIES[@]}"; do
       exit 1
     }
   gcloud beta builds approve \
-    "projects/${PROJECT_ID}/locations/${REGION}/builds/${build_id}" \
+    "${build_id}" \
+    --project="${PROJECT_ID}" \
+    --region="${REGION}" \
     --comment="Protected Customer News release ${COMMIT_SHA}" \
     --quiet >/dev/null
   printf 'approved\t%s\t%s\n' "${trigger}" "${build_id}"
