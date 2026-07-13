@@ -286,18 +286,31 @@ import json
 import sys
 
 path = next(arg for arg in sys.argv if arg.startswith("repos/"))
-if path.endswith("/statuses"):
+if path.endswith("/123/statuses"):
+    print(json.dumps({"state": "in_progress", "description": "Customer News release in_progress"}))
+elif path.endswith("/statuses"):
     print(json.dumps({"state": "inactive", "description": "superseded_by=" + "b" * 40}))
 else:
-    print(json.dumps([{
-        "id": 123,
-        "payload": {
-            "schema": "customer_news_release_v1",
-            "upstream_sha": "a" * 40,
-            "release_tag": "customer-news-release/123-promote-" + "a" * 40,
-            "mode": "promote"
+    print(json.dumps([
+        {
+            "id": 123,
+            "payload": {
+                "schema": "customer_news_release_v1",
+                "upstream_sha": "a" * 40,
+                "release_tag": "customer-news-release/123-promote-" + "a" * 40,
+                "mode": "promote"
+            }
+        },
+        {
+            "id": 124,
+            "payload": {
+                "schema": "customer_news_release_v1",
+                "upstream_sha": "b" * 40,
+                "release_tag": "customer-news-release/124-promote-" + "b" * 40,
+                "mode": "promote"
+            }
         }
-    }]))
+    ]))
 """,
         encoding="utf-8",
     )
@@ -317,7 +330,9 @@ else:
     assert completed.returncode == 0, completed.stderr
     snapshot = json.loads(completed.stdout)
     assert snapshot[0]["deployment_id"] == 123
-    assert snapshot[0]["superseded_by"] == "b" * 40
+    assert snapshot[0]["superseded_by"] is None
+    assert snapshot[1]["deployment_id"] == 124
+    assert snapshot[1]["superseded_by"] == "b" * 40
 
 
 def test_success_is_published_only_after_distinct_read_only_runtime_proof():
