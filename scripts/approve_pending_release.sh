@@ -11,7 +11,7 @@ COMMIT_SHA="${COMMIT_SHA:-}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-20}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-15}"
 
-[[ "${RELEASE_TAG}" =~ ^customer-news-release/[0-9]+-[0-9a-f]{40}$ ]] || {
+[[ "${RELEASE_TAG}" =~ ^customer-news-release/[1-9][0-9]*-(promote|rollback)-[0-9a-f]{40}$ ]] || {
   echo "ERROR: invalid RELEASE_TAG." >&2
   exit 1
 }

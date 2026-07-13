@@ -15,7 +15,7 @@ SLEEP_SECONDS="${SLEEP_SECONDS:-15}"
   echo "ERROR: phase must be pending, terminal, or success." >&2
   exit 1
 }
-[[ "${RELEASE_TAG}" =~ ^customer-news-release/[0-9]+-[0-9a-f]{40}$ ]] || {
+[[ "${RELEASE_TAG}" =~ ^customer-news-release/[1-9][0-9]*-(promote|rollback)-[0-9a-f]{40}$ ]] || {
   echo "ERROR: invalid release tag." >&2
   exit 1
 }

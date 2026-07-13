@@ -56,9 +56,14 @@ case "${OPERATION}" in
       echo "ERROR: RELEASE_MODE must be promote or rollback." >&2
       exit 1
     }
-    epoch="$(sed -nE 's#^customer-news-release/([0-9]+)-[0-9a-f]{40}$#\1#p' <<<"${RELEASE_TAG}")"
+    parsed="$(sed -nE 's#^customer-news-release/([1-9][0-9]*)-(promote|rollback)-([0-9a-f]{40})$#\1 \2 \3#p' <<<"${RELEASE_TAG}")"
+    read -r epoch tag_mode tag_sha <<<"${parsed}"
     [[ -n "${epoch}" ]] || {
       echo "ERROR: RELEASE_TAG is invalid." >&2
+      exit 1
+    }
+    [[ "${tag_mode}" == "${RELEASE_MODE}" && "${tag_sha}" == "${UPSTREAM_SHA}" ]] || {
+      echo "ERROR: RELEASE_TAG mode/SHA mismatch." >&2
       exit 1
     }
     jq -n \

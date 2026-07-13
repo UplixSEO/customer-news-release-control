@@ -11,7 +11,10 @@ from typing import Any, Mapping
 
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-TAG_RE = re.compile(r"^customer-news-release/(?P<epoch>[0-9]+)-(?P<sha>[0-9a-f]{40})$")
+TAG_RE = re.compile(
+    r"^customer-news-release/(?P<epoch>[1-9][0-9]*)-"
+    r"(?P<mode>promote|rollback)-(?P<sha>[0-9a-f]{40})$"
+)
 RESUMABLE_STATES = {"pending", "in_progress", "failure"}
 
 
@@ -19,12 +22,14 @@ class LedgerError(RuntimeError):
     pass
 
 
-def _validate_candidate(candidate_sha: str, current_head_sha: str, release_tag: str) -> None:
+def _validate_candidate(
+    candidate_sha: str, current_head_sha: str, release_tag: str, mode: str
+) -> None:
     if not SHA_RE.fullmatch(candidate_sha) or not SHA_RE.fullmatch(current_head_sha):
         raise LedgerError("candidate and current-head SHAs must be exact 40-hex values")
     match = TAG_RE.fullmatch(release_tag)
-    if match is None or match.group("sha") != candidate_sha:
-        raise LedgerError("release tag must encode the exact candidate SHA")
+    if match is None or match.group("sha") != candidate_sha or match.group("mode") != mode:
+        raise LedgerError("release tag must encode the exact candidate SHA and mode")
 
 
 def _is_ancestor(
@@ -73,9 +78,9 @@ def decide_release(
     function only consumes their normalized state and never performs I/O.
     """
 
-    _validate_candidate(candidate_sha, current_head_sha, release_tag)
     if mode not in {"promote", "rollback"}:
         raise LedgerError("mode must be promote or rollback")
+    _validate_candidate(candidate_sha, current_head_sha, release_tag, mode)
 
     exact = _exact_entry(
         entries,

@@ -36,7 +36,7 @@ def test_current_head_without_existing_entry_creates_pending_deployment():
     decision = ledger.decide_release(
         candidate_sha=sha,
         current_head_sha=sha,
-        release_tag=f"customer-news-release/2-{sha}",
+        release_tag=f"customer-news-release/2-promote-{sha}",
         mode="promote",
         entries=[],
         ancestry={},
@@ -55,7 +55,7 @@ def test_current_head_without_existing_entry_creates_pending_deployment():
 def test_interrupted_release_resumes_same_deployment_without_blind_redeploy(state):
     ledger = _load_module()
     sha = "b" * 40
-    tag = f"customer-news-release/2-{sha}"
+    tag = f"customer-news-release/2-promote-{sha}"
 
     decision = ledger.decide_release(
         candidate_sha=sha,
@@ -73,7 +73,7 @@ def test_interrupted_release_resumes_same_deployment_without_blind_redeploy(stat
 def test_successful_exact_release_is_repaired_without_redeploy():
     ledger = _load_module()
     sha = "b" * 40
-    tag = f"customer-news-release/2-{sha}"
+    tag = f"customer-news-release/2-promote-{sha}"
 
     decision = ledger.decide_release(
         candidate_sha=sha,
@@ -96,7 +96,7 @@ def test_stale_candidate_is_superseded_only_by_proven_current_descendant():
     decision = ledger.decide_release(
         candidate_sha=old,
         current_head_sha=new,
-        release_tag=f"customer-news-release/1-{old}",
+        release_tag=f"customer-news-release/1-promote-{old}",
         mode="promote",
         entries=[],
         ancestry={(old, new): True},
@@ -115,7 +115,7 @@ def test_diverged_candidate_is_rejected_not_superseded():
         ledger.decide_release(
             candidate_sha=old,
             current_head_sha=other,
-            release_tag=f"customer-news-release/1-{old}",
+            release_tag=f"customer-news-release/1-promote-{old}",
             mode="promote",
             entries=[],
             ancestry={(old, other): False},
@@ -131,9 +131,9 @@ def test_rollback_requires_compatibility_approval_and_reason():
         ledger.decide_release(
             candidate_sha=old,
             current_head_sha=current,
-            release_tag=f"customer-news-release/3-{old}",
+            release_tag=f"customer-news-release/3-rollback-{old}",
             mode="rollback",
-            entries=[_entry(10, current, f"customer-news-release/2-{current}", "success")],
+            entries=[_entry(10, current, f"customer-news-release/2-promote-{current}", "success")],
             ancestry={(old, current): True},
             compatibility_approved=False,
             rollback_reason="UPX-895 exercise",
@@ -144,7 +144,7 @@ def test_compatibility_approved_ancestor_rollback_creates_new_epoch_entry():
     ledger = _load_module()
     old = "a" * 40
     current = "b" * 40
-    rollback_tag = f"customer-news-release/3-{old}"
+    rollback_tag = f"customer-news-release/3-rollback-{old}"
 
     decision = ledger.decide_release(
         candidate_sha=old,
@@ -152,8 +152,8 @@ def test_compatibility_approved_ancestor_rollback_creates_new_epoch_entry():
         release_tag=rollback_tag,
         mode="rollback",
         entries=[
-            _entry(9, old, f"customer-news-release/1-{old}", "inactive"),
-            _entry(10, current, f"customer-news-release/2-{current}", "success"),
+            _entry(9, old, f"customer-news-release/1-promote-{old}", "inactive"),
+            _entry(10, current, f"customer-news-release/2-promote-{current}", "success"),
         ],
         ancestry={(old, current): True},
         compatibility_approved=True,
@@ -171,9 +171,9 @@ def test_supersession_targets_are_selected_only_after_new_success():
     current = "b" * 40
     unrelated = "c" * 40
     entries = [
-        _entry(1, old, f"customer-news-release/1-{old}", "success"),
-        _entry(2, unrelated, f"customer-news-release/1-{unrelated}", "failure"),
-        _entry(3, current, f"customer-news-release/2-{current}", "in_progress"),
+        _entry(1, old, f"customer-news-release/1-promote-{old}", "success"),
+        _entry(2, unrelated, f"customer-news-release/1-promote-{unrelated}", "failure"),
+        _entry(3, current, f"customer-news-release/2-promote-{current}", "in_progress"),
     ]
 
     assert ledger.supersession_targets(

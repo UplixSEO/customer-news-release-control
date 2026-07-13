@@ -6,7 +6,7 @@ News source, customer identifiers, build payloads, runtime artifacts, or
 credentials.
 
 The private repository's successful `main` guard creates an annotated tag named
-`customer-news-release/<run-id>-<40-hex-sha>`. A reviewer dispatches
+`customer-news-release/<run-id>-(promote|rollback)-<40-hex-sha>`. A reviewer dispatches
 `promote.yml` with that exact tag. The production environment releases a
 read-only GitHub App key; the workflow verifies the private tag and successful
 guard run plus the unique merged `dev`-to-`main` PR for that SHA, exchanges

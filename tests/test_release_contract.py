@@ -350,7 +350,7 @@ else:
 
 
 def _pending_builds(extra_trigger=None):
-    tag = "customer-news-release/123-" + "a" * 40
+    tag = "customer-news-release/123-promote-" + "a" * 40
     rows = [
         {
             "id": f"build-{index}",
@@ -385,7 +385,7 @@ def _run_approver(tmp_path: Path, builds):
         **os.environ,
         "PATH": f"{tmp_path}:{os.environ['PATH']}",
         "AUTHORITIES_FILE": str(AUTHORITIES),
-        "RELEASE_TAG": "customer-news-release/123-" + "a" * 40,
+        "RELEASE_TAG": "customer-news-release/123-promote-" + "a" * 40,
         "COMMIT_SHA": "a" * 40,
         "MAX_ATTEMPTS": "1",
         "SLEEP_SECONDS": "0",
