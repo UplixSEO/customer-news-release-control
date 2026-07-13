@@ -43,6 +43,9 @@ for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
   ready=$?
   set -e
   if [[ "${ready}" == "0" ]]; then
+    if [[ -n "${OUTPUT_PATH:-}" ]]; then
+      printf '%s\n' "${builds}" > "${OUTPUT_PATH}"
+    fi
     printf '%s\n' "${result}"
     exit 0
   fi

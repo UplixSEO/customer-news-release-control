@@ -17,6 +17,7 @@ APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
 PROBE_UPSTREAM_APP = ROOT / "scripts" / "probe_upstream_app.sh"
 PROBE_GCP_AUTHORITY = ROOT / "scripts" / "probe_gcp_authority.sh"
 DEPLOYMENT_LEDGER = ROOT / "scripts" / "github_deployment_ledger.sh"
+RUNTIME_PROOF = ROOT / "scripts" / "runtime_release_proof.py"
 WAIT_RELEASE_BATCH = ROOT / "scripts" / "wait_release_batch.sh"
 
 
@@ -238,7 +239,10 @@ def test_production_workflow_uses_native_deployment_ledger_and_current_head_rere
     assert "Re-read current private main before approval" in names
     assert "Wait for prior release builds to become terminal" in names
     assert "Wait for exact release batch success" in names
-    assert "Mark GitHub Deployment successful" in names
+    assert "Mark GitHub Deployment successful" not in names
+    assert "Mark GitHub Deployment successful" in [
+        step["name"] for step in workflow["jobs"]["prove"]["steps"]
+    ]
     assert names.index("Re-read current private main before approval") < names.index(
         "Approve exact fixed batch"
     )
@@ -260,6 +264,62 @@ def test_deployment_ledger_client_is_a_thin_native_github_api_surface():
     assert "curl " not in script
     assert "http://" not in script
     assert "https://" not in script
+
+
+def test_success_is_published_only_after_distinct_read_only_runtime_proof():
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    promote_steps = {step["name"]: step for step in workflow["jobs"]["promote"]["steps"]}
+    proof_job = workflow["jobs"]["prove"]
+    proof_steps = {step["name"]: step for step in proof_job["steps"]}
+
+    assert "Mark GitHub Deployment successful" not in promote_steps
+    assert proof_job["needs"] == "promote"
+    assert proof_job["environment"] == "production"
+    assert proof_job["permissions"] == {
+        "contents": "read",
+        "deployments": "write",
+        "id-token": "write",
+    }
+    auth = proof_steps["Authenticate as read-only runtime proof"]
+    assert auth["with"]["workload_identity_provider"] == "${{ vars.GCP_PROOF_WIF_PROVIDER }}"
+    assert auth["with"]["service_account"] == "${{ vars.GCP_PROOF_SERVICE_ACCOUNT }}"
+    commands = "\n".join(str(step.get("run", "")) for step in proof_job["steps"])
+    assert "repos/UplixSEO/Uplix-Agents/contents/customer-news/config/cloudbuild_deploy_inventory.yaml" in commands
+    assert "scripts/runtime_release_proof.py" in commands
+    assert "expected == 24" not in commands
+    assert ".missing == 0" in commands
+    assert ".mismatched == 0" in commands
+    assert ".unknown == 0" in commands
+    assert ".skipped == 0" in commands
+    assert proof_steps["Mark GitHub Deployment successful"]["if"] == "success()"
+
+
+def test_runtime_proof_script_is_dynamic_and_read_only():
+    script = RUNTIME_PROOF.read_text(encoding="utf-8")
+
+    assert 'row.get("deployment") == "automatic"' in script
+    assert 'row.get("environment") == "prod"' in script
+    assert 'row.get("environment") == "dev"' in script
+    assert "bigquery_sql" in script
+    assert "cloud_run_service" in script
+    assert "cloud_run_job" in script
+    assert "cloud_function" in script
+    assert "cloud_build_trigger" in script
+    assert "expected" in script
+    assert "missing" in script
+    assert "mismatched" in script
+    assert "unknown" in script
+    assert "skipped" in script
+    for mutation in (
+        "gcloud builds submit",
+        "gcloud builds triggers run",
+        "gcloud run deploy",
+        "gcloud run jobs deploy",
+        "gcloud functions deploy",
+        "bq query",
+        "gcloud storage cp",
+    ):
+        assert mutation not in script
 
 
 def test_release_batch_waiter_is_read_only_and_uses_exact_state_validator():

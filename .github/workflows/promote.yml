@@ -54,6 +54,11 @@ jobs:
       contents: read
       deployments: write
       id-token: write
+    outputs:
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+      proceed: ${{ steps.deployment.outputs.proceed }}
+      release_tag: ${{ steps.candidate.outputs.release_tag }}
+      sha: ${{ steps.candidate.outputs.sha }}
     steps:
       - name: Checkout public controller
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -230,39 +235,117 @@ jobs:
         env:
           RELEASE_TAG: ${{ steps.candidate.outputs.release_tag }}
           COMMIT_SHA: ${{ steps.candidate.outputs.sha }}
+          OUTPUT_PATH: ${{ runner.temp }}/accepted-builds.json
         run: scripts/wait_release_batch.sh success "${RELEASE_TAG}" "${COMMIT_SHA}"
 
-      - name: Mark GitHub Deployment successful
+      - name: Transfer exact accepted-build manifest
         if: steps.deployment.outputs.proceed == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: accepted-builds-${{ steps.candidate.outputs.sha }}
+          path: ${{ runner.temp }}/accepted-builds.json
+          retention-days: 1
+
+  prove:
+    if: needs.promote.outputs.proceed == 'true'
+    name: Prove exact runtime convergence
+    needs: promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: read
+      deployments: write
+      id-token: write
+    steps:
+      - name: Checkout public controller
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Mint read-only private-upstream token
+        id: upstream-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.UPSTREAM_READ_APP_ID }}
+          private-key: ${{ secrets.UPSTREAM_READ_APP_PRIVATE_KEY }}
+          owner: UplixSEO
+          repositories: Uplix-Agents
+          permission-contents: read
+          permission-metadata: read
+
+      - name: Fetch exact private inventory without executing private source
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          UPSTREAM_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          inventory_yaml="${RUNNER_TEMP}/cloudbuild-deploy-inventory.yaml"
+          inventory_json="${RUNNER_TEMP}/cloudbuild-deploy-inventory.json"
+          gh api \
+            "repos/UplixSEO/Uplix-Agents/contents/customer-news/config/cloudbuild_deploy_inventory.yaml?ref=${UPSTREAM_SHA}" \
+            --jq '.content' | base64 --decode > "${inventory_yaml}"
+          ruby -ryaml -rjson -e \
+            'puts JSON.generate(YAML.safe_load(File.read(ARGV[0]), aliases: true))' \
+            "${inventory_yaml}" > "${inventory_json}"
+
+      - name: Download exact accepted-build manifest
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: accepted-builds-${{ needs.promote.outputs.sha }}
+          path: ${{ runner.temp }}/accepted-builds
+
+      - name: Authenticate as read-only runtime proof
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_PROOF_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PROOF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          version: ">= 540.0.0"
+
+      - name: Prove dynamic production inventory
+        env:
+          UPSTREAM_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          proof="${RUNNER_TEMP}/runtime-proof.json"
+          scripts/runtime_release_proof.py \
+            --inventory-json "${RUNNER_TEMP}/cloudbuild-deploy-inventory.json" \
+            --accepted-builds-json "${RUNNER_TEMP}/accepted-builds/accepted-builds.json" \
+            --expected-sha "${UPSTREAM_SHA}" \
+            --output "${proof}" >/dev/null
+          jq -e '
+            .aggregate.missing == 0
+            and .aggregate.mismatched == 0
+            and .aggregate.unknown == 0
+            and .aggregate.skipped == 0
+            and (.dev_targets | length) == 4
+          ' "${proof}" >/dev/null
+          jq '{schema,sha,aggregate,dev_targets}' "${proof}" > "${RUNNER_TEMP}/runtime-proof-summary.json"
+
+      - name: Publish sanitized aggregate proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: runtime-proof-${{ needs.promote.outputs.sha }}
+          path: ${{ runner.temp }}/runtime-proof-summary.json
+          retention-days: 30
+
+      - name: Mark GitHub Deployment successful
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
-          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+          DEPLOYMENT_ID: ${{ needs.promote.outputs.deployment_id }}
           DEPLOYMENT_STATE: success
-          DEPLOYMENT_DESCRIPTION: Exact 17-build batch succeeded
+          DEPLOYMENT_DESCRIPTION: Exact build and runtime proof succeeded
         run: scripts/github_deployment_ledger.sh status
 
-      - name: Mark proven ancestors inactive
-        if: steps.deployment.outputs.proceed == 'true'
+      - name: Mark GitHub Deployment failed
+        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
-          SUCCESSFUL_SHA: ${{ steps.candidate.outputs.sha }}
-          LEDGER_PATH: ${{ steps.ledger.outputs.path }}
-          ANCESTRY_PATH: ${{ steps.decision.outputs.ancestry_path }}
-        run: |
-          jq -n \
-            --arg successful_sha "${SUCCESSFUL_SHA}" \
-            --argjson entries "$(cat "${LEDGER_PATH}")" \
-            --argjson ancestry "$(cat "${ANCESTRY_PATH}")" '{
-              successful_sha: $successful_sha,
-              entries: $entries,
-              ancestry: $ancestry,
-              release_succeeded: true
-            }' | scripts/release_ledger.py supersede | jq -c '.[]' | while read -r row; do
-              DEPLOYMENT_ID="$(jq -r '.deployment_id' <<<"${row}")" \
-                DEPLOYMENT_STATE=inactive \
-                SUPERSEDED_BY="$(jq -r '.superseded_by' <<<"${row}")" \
-                scripts/github_deployment_ledger.sh status
-            done
+          DEPLOYMENT_ID: ${{ needs.promote.outputs.deployment_id }}
+          DEPLOYMENT_STATE: failure
+          DEPLOYMENT_DESCRIPTION: Runtime convergence proof failed
+        run: scripts/github_deployment_ledger.sh status
 
   negative-nonproduction:
     if: inputs.nonproduction_wif_probe
