@@ -96,10 +96,8 @@ for trigger in "${EXPECTED_AUTHORITIES[@]}"; do
       echo "ERROR: build ${build_id} drifted before approval." >&2
       exit 1
     }
-  gcloud beta builds approve \
-    "${build_id}" \
-    --project="${PROJECT_ID}" \
-    --region="${REGION}" \
+  gcloud alpha builds approve \
+    "projects/${PROJECT_ID}/locations/${REGION}/builds/${build_id}" \
     --comment="Protected Customer News release ${COMMIT_SHA}" \
     --quiet >/dev/null
   printf 'approved\t%s\t%s\n' "${trigger}" "${build_id}"
