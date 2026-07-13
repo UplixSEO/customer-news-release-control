@@ -10,13 +10,14 @@ if [[ -z "${GH_TOKEN:-}" ]]; then
   echo "ERROR: GH_TOKEN from the read-only upstream GitHub App is required." >&2
   exit 1
 fi
-if [[ ! "${RELEASE_TAG}" =~ ^customer-news-release/([0-9]+)-([0-9a-f]{40})$ ]]; then
-  echo "ERROR: release_tag must be customer-news-release/<run-id>-<40-hex-sha>." >&2
+if [[ ! "${RELEASE_TAG}" =~ ^customer-news-release/([1-9][0-9]*)-(promote|rollback)-([0-9a-f]{40})$ ]]; then
+  echo "ERROR: release_tag must encode run id, mode, and exact SHA." >&2
   exit 1
 fi
 
 RUN_ID="${BASH_REMATCH[1]}"
-EXPECTED_SHA="${BASH_REMATCH[2]}"
+RELEASE_MODE="${BASH_REMATCH[2]}"
+EXPECTED_SHA="${BASH_REMATCH[3]}"
 
 ref_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/ref/tags/${RELEASE_TAG}")"
 TAG_OBJECT_TYPE="$(jq -r '.object.type' <<<"${ref_json}")"
@@ -37,10 +38,11 @@ fi
 run_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/actions/runs/${RUN_ID}")"
 jq -e \
   --arg sha "${EXPECTED_SHA}" \
+  --arg mode "${RELEASE_MODE}" \
   --arg repository "${UPSTREAM_REPOSITORY}" '
-    .head_sha == $sha
-    and .head_branch == "main"
-    and .event == "push"
+    .head_branch == "main"
+    and (($mode == "promote" and .event == "push" and .head_sha == $sha)
+      or ($mode == "rollback" and .event == "workflow_dispatch"))
     and .status == "completed"
     and .conclusion == "success"
     and .path == ".github/workflows/customer-news-cloudbuild-guard.yml"
@@ -75,5 +77,5 @@ if [[ "$(jq 'length' <<<"${promotion_pr_json}")" != "1" ]]; then
 fi
 PROMOTION_PR_NUMBER="$(jq -r '.[0].number' <<<"${promotion_pr_json}")"
 
-printf 'sha=%s\nrun_id=%s\nrelease_tag=%s\npromotion_pr=%s\n' \
-  "${EXPECTED_SHA}" "${RUN_ID}" "${RELEASE_TAG}" "${PROMOTION_PR_NUMBER}"
+printf 'sha=%s\nrun_id=%s\nmode=%s\nrelease_tag=%s\npromotion_pr=%s\n' \
+  "${EXPECTED_SHA}" "${RUN_ID}" "${RELEASE_MODE}" "${RELEASE_TAG}" "${PROMOTION_PR_NUMBER}"
