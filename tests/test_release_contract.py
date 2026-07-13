@@ -145,6 +145,18 @@ def test_public_workflow_has_a_non_mutating_authority_probe_mode():
     assert steps_by_name["Approve exact fixed batch"]["if"] == (
         "steps.deployment.outputs.proceed == 'true'"
     )
+    proof_audit = workflow["jobs"]["proof-audit"]
+    assert proof_audit["if"] == "inputs.authority_probe"
+    assert proof_audit["environment"] == "production"
+    assert proof_audit["permissions"] == {"contents": "read", "id-token": "write"}
+    proof_steps = {step["name"]: step for step in proof_audit["steps"]}
+    assert proof_steps["Authenticate as read-only runtime proof"]["with"] == {
+        "workload_identity_provider": "${{ vars.GCP_PROOF_WIF_PROVIDER }}",
+        "service_account": "${{ vars.GCP_PROOF_SERVICE_ACCOUNT }}",
+    }
+    assert proof_steps["Probe proof-only GCP boundary"]["run"] == (
+        "scripts/probe_gcp_proof_authority.sh"
+    )
 
 
 def test_authority_probe_scripts_are_read_only_and_fail_closed():

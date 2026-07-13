@@ -347,6 +347,33 @@ jobs:
           DEPLOYMENT_DESCRIPTION: Runtime convergence proof failed
         run: scripts/github_deployment_ledger.sh status
 
+  proof-audit:
+    if: inputs.authority_probe
+    name: Probe read-only runtime proof authority
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout public controller
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Authenticate as read-only runtime proof
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_PROOF_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PROOF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
+        with:
+          version: ">= 540.0.0"
+
+      - name: Probe proof-only GCP boundary
+        run: scripts/probe_gcp_proof_authority.sh
+
   negative-nonproduction:
     if: inputs.nonproduction_wif_probe
     name: Deny exact workflow outside production
