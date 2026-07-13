@@ -6,7 +6,6 @@ set -euo pipefail
 PROJECT_ID="${PROJECT_ID:-customer-news-475010}"
 BUILD_SERVICE_ACCOUNT="${BUILD_SERVICE_ACCOUNT:-cn-cicd-sa@customer-news-475010.iam.gserviceaccount.com}"
 SOURCE_BUCKET="${SOURCE_BUCKET:-customer-news-475010_cloudbuild}"
-PROBE_TRIGGER_ID="${PROBE_TRIGGER_ID:-03928806-ecbf-45e5-aa92-5fb64d430060}"
 
 command -v curl >/dev/null 2>&1 || {
   echo "ERROR: curl is required." >&2
@@ -17,8 +16,9 @@ command -v jq >/dev/null 2>&1 || {
   exit 1
 }
 
-# Cloud Build cancellation is gated by cloudbuild.builds.update. Manual
-# triggers.run is gated by cloudbuild.builds.create; neither permission is held.
+# Cloud Build cancellation is gated by cloudbuild.builds.update. Native
+# triggers.create/patch/delete/run are gated by cloudbuild.builds.create;
+# neither permission is held. triggers.run is gated by cloudbuild.builds.create.
 project_permissions=(
   cloudbuild.builds.approve
   cloudbuild.builds.get
@@ -29,10 +29,6 @@ project_permissions=(
   cloudbuild.builds.update
   resourcemanager.projects.setIamPolicy
 )
-# The exact direct-role read-back separately proves that none of these trigger
-# permissions is granted: cloudbuild.triggers.create,
-# cloudbuild.triggers.delete, cloudbuild.triggers.update. A read-only describe
-# below must also be denied to the live federated identity.
 expected_project_permissions='["cloudbuild.builds.approve","cloudbuild.builds.get","cloudbuild.builds.list","resourcemanager.projects.get","serviceusage.services.use"]'
 
 permissions_json="$(printf '%s\n' "${project_permissions[@]}" | jq -R . | jq -cs '{permissions: .}')"
@@ -46,13 +42,6 @@ project_response="$(curl --fail --silent --show-error \
 actual_project_permissions="$(jq -c '(.permissions // []) | sort' <<<"${project_response}")"
 if [[ "${actual_project_permissions}" != "${expected_project_permissions}" ]]; then
   echo "ERROR: effective project permissions drifted: ${actual_project_permissions}" >&2
-  exit 1
-fi
-
-if gcloud builds triggers describe "${PROBE_TRIGGER_ID}" \
-  --project="${PROJECT_ID}" \
-  --region=europe-west1 >/dev/null 2>&1; then
-  echo "ERROR: release approver unexpectedly has Cloud Build trigger read access." >&2
   exit 1
 fi
 

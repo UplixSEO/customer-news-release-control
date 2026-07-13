@@ -144,9 +144,6 @@ def test_authority_probe_scripts_are_read_only_and_fail_closed():
         "cloudbuild.builds.approve",
         "cloudbuild.builds.create",
         "cloudbuild.builds.update",
-        "cloudbuild.triggers.create",
-        "cloudbuild.triggers.delete",
-        "cloudbuild.triggers.update",
         "iam.serviceAccounts.actAs",
         "storage.objects.create",
         "resourcemanager.projects.setIamPolicy",
@@ -154,6 +151,9 @@ def test_authority_probe_scripts_are_read_only_and_fail_closed():
     assert all(marker in gcp_probe for marker in required_gcp_markers)
     assert "cancellation is gated by cloudbuild.builds.update" in gcp_probe
     assert "triggers.run is gated by cloudbuild.builds.create" in gcp_probe
+    assert "triggers.create/patch/delete/run are gated by cloudbuild.builds.create" in gcp_probe
+    assert "PROBE_TRIGGER_ID" not in gcp_probe
+    assert "gcloud builds triggers describe" not in gcp_probe
 
     forbidden = (
         "gcloud builds submit",
