@@ -51,5 +51,29 @@ jq -e \
     exit 1
   }
 
-printf 'sha=%s\nrun_id=%s\nrelease_tag=%s\n' \
-  "${EXPECTED_SHA}" "${RUN_ID}" "${RELEASE_TAG}"
+pulls_json="$(gh api \
+  -H 'Accept: application/vnd.github+json' \
+  "repos/${UPSTREAM_REPOSITORY}/commits/${EXPECTED_SHA}/pulls")"
+promotion_pr_json="$(jq -c \
+  --arg sha "${EXPECTED_SHA}" \
+  --arg repository "${UPSTREAM_REPOSITORY}" '
+    [ .[]
+      | select(
+          .state == "closed"
+          and .merged_at != null
+          and .merge_commit_sha == $sha
+          and .base.ref == "main"
+          and .head.ref == "dev"
+          and .base.repo.full_name == $repository
+          and .head.repo.full_name == $repository
+        )
+    ]
+  ' <<<"${pulls_json}")"
+if [[ "$(jq 'length' <<<"${promotion_pr_json}")" != "1" ]]; then
+  echo "ERROR: exact SHA must be the unique merged Uplix-Agents dev-to-main PR commit." >&2
+  exit 1
+fi
+PROMOTION_PR_NUMBER="$(jq -r '.[0].number' <<<"${promotion_pr_json}")"
+
+printf 'sha=%s\nrun_id=%s\nrelease_tag=%s\npromotion_pr=%s\n' \
+  "${EXPECTED_SHA}" "${RUN_ID}" "${RELEASE_TAG}" "${PROMOTION_PR_NUMBER}"
