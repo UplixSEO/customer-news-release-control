@@ -1,0 +1,57 @@
+name: Deny untrusted release authority
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  other-workflow-production:
+    if: github.event_name == 'workflow_dispatch'
+    name: Deny another workflow in production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Attempt exchange from another workflow
+        id: denied-auth
+        continue-on-error: true
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_APPROVER_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_APPROVER_SERVICE_ACCOUNT }}
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Assert exchange denied
+        if: always()
+        run: test "${{ steps.denied-auth.outcome }}" = "failure"
+
+  pull-request:
+    if: github.event_name == 'pull_request'
+    name: Deny pull-request exchange
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Attempt exchange from a pull request
+        id: denied-auth
+        continue-on-error: true
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: projects/36487794907/locations/global/workloadIdentityPools/github-release/providers/github-release-approval
+          service_account: cn-release-approver@customer-news-475010.iam.gserviceaccount.com
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Assert exchange denied
+        if: always()
+        run: test "${{ steps.denied-auth.outcome }}" = "failure"

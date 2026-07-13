@@ -23,6 +23,14 @@ identity's effective permissions. Candidate validation and the 17-build
 approval step are skipped in this mode, so no build, release, or deployment is
 started.
 
+The controller also carries fail-closed WIF denial checks. Setting
+`nonproduction_wif_probe=true` on `promote.yml` proves that the exact trusted
+workflow cannot exchange outside the `production` environment. The separate
+`wif-negative.yml` proves that a different workflow is denied even after the
+production reviewer gate and that pull-request claims are denied. These jobs
+only invoke the native OIDC authentication action and assert its failure; they
+contain no GitHub, Cloud Build, IAM, or storage mutation commands.
+
 Uplix credentials are stored only in Uplix-owned GitHub/GCP control planes.
 Léonard's personal 1Password stack is not a dependency or recovery store.
 
