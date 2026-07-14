@@ -98,6 +98,67 @@ def test_public_workflow_uses_read_only_app_before_gcp_authentication():
         assert marker not in lowered
 
 
+def test_rollback_candidate_accepts_dispatch_from_current_main_for_ancestor(tmp_path):
+    ancestor = "a" * 40
+    current_main = "b" * 40
+    tag_object = "c" * 40
+    run_id = "30000000001"
+    release_tag = f"customer-news-release/{run_id}-rollback-{ancestor}"
+    fake_gh = tmp_path / "gh"
+    fake_gh.write_text(
+        f"""#!/usr/bin/env python3
+import json
+import sys
+
+path = next(arg for arg in sys.argv if arg.startswith("repos/"))
+if "/git/ref/tags/" in path:
+    print(json.dumps({{"object": {{"type": "tag", "sha": "{tag_object}"}}}}))
+elif f"/git/tags/{{'{tag_object}'}}" in path:
+    print(json.dumps({{"object": {{"type": "commit", "sha": "{ancestor}"}}}}))
+elif f"/actions/runs/{{'{run_id}'}}" in path:
+    print(json.dumps({{
+        "head_branch": "main",
+        "head_sha": "{current_main}",
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "path": ".github/workflows/customer-news-cloudbuild-guard.yml",
+        "head_repository": {{"full_name": "UplixSEO/Uplix-Agents", "private": True}}
+    }}))
+elif f"/commits/{{'{ancestor}'}}/pulls" in path:
+    print(json.dumps([{{
+        "number": 458,
+        "state": "closed",
+        "merged_at": "2026-07-14T00:00:00Z",
+        "merge_commit_sha": "{ancestor}",
+        "base": {{"ref": "main", "repo": {{"full_name": "UplixSEO/Uplix-Agents"}}}},
+        "head": {{"ref": "dev", "repo": {{"full_name": "UplixSEO/Uplix-Agents"}}}}
+    }}]))
+else:
+    raise SystemExit(f"unexpected gh path: {{path}}")
+""",
+        encoding="utf-8",
+    )
+    fake_gh.chmod(0o755)
+
+    completed = subprocess.run(
+        [str(VERIFY_UPSTREAM)],
+        cwd=ROOT,
+        env={
+            **os.environ,
+            "PATH": f"{tmp_path}:{os.environ['PATH']}",
+            "GH_TOKEN": "test-token",
+            "RELEASE_TAG": release_tag,
+        },
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert f"sha={ancestor}" in completed.stdout
+    assert "mode=rollback" in completed.stdout
+
+
 def test_public_workflow_has_a_non_mutating_authority_probe_mode():
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     triggers = workflow.get("on") or workflow.get(True)
