@@ -19,6 +19,10 @@ The exact-batch waiter distinguishes in-flight builds from terminal failures.
 It continues polling while any expected authority is nonterminal, but exits
 immediately once an exact 17-build batch is terminal with any non-success
 result; a failed batch is never allowed to consume the full workflow timeout.
+If the workflow itself is interrupted after approval, resuming the same GitHub
+Deployment approves only build IDs still in `PENDING`; `QUEUED`, `WORKING`, and
+`SUCCESS` IDs are read back and left untouched, so proof repair never causes a
+blind redeploy.
 
 For a least-privilege audit without a release, dispatch the same protected
 workflow with `authority_probe=true` and any syntactically inert `release_tag`
