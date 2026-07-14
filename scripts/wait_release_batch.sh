@@ -50,6 +50,10 @@ for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
     printf '%s\n' "${result}"
     exit 0
   fi
+  if [[ "${ready}" == "2" ]]; then
+    echo "ERROR: exact release batch reached terminal failure: ${result}" >&2
+    exit 1
+  fi
   if [[ "${attempt}" == "${MAX_ATTEMPTS}" ]]; then
     echo "ERROR: exact release batch did not reach ${PHASE}: ${result}" >&2
     exit 1

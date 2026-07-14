@@ -56,8 +56,11 @@ def evaluate_batch(
             wrong_state.append(trigger)
         elif phase == "terminal" and status not in TERMINAL_STATUSES:
             nonterminal.append(trigger)
-        elif phase == "success" and status != "SUCCESS":
-            failed.append(trigger)
+        elif phase == "success":
+            if status not in TERMINAL_STATUSES:
+                nonterminal.append(trigger)
+            elif status != "SUCCESS":
+                failed.append(trigger)
 
     result = {
         "phase": phase,
@@ -81,6 +84,12 @@ def evaluate_batch(
             "wrong_state",
         )
     ) and len(builds) == len(expected_authorities)
+    result["terminal_failure"] = (
+        phase == "success"
+        and not any(result[key] for key in ("missing", "duplicate", "unknown", "nonterminal"))
+        and bool(result["failed"])
+        and len(builds) == len(expected_authorities)
+    )
     return result
 
 
@@ -105,7 +114,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     json.dump(result, sys.stdout, sort_keys=True)
     sys.stdout.write("\n")
-    return 0 if result["ready"] else 1
+    if result["ready"]:
+        return 0
+    if result["terminal_failure"]:
+        return 2
+    return 1
 
 
 if __name__ == "__main__":
