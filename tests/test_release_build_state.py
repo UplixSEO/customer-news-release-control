@@ -97,6 +97,28 @@ def test_current_batch_requires_all_success_for_release_proof():
     )["ready"] is True
 
 
+def test_success_phase_distinguishes_working_from_terminal_failure():
+    state = _load_module()
+    working = _builds(status="SUCCESS")
+    working[0]["status"] = "WORKING"
+    failed = _builds(status="SUCCESS")
+    failed[0]["status"] = "FAILURE"
+
+    working_result = state.evaluate_batch(
+        working, expected_authorities=_authorities(), phase="success"
+    )
+    failed_result = state.evaluate_batch(
+        failed, expected_authorities=_authorities(), phase="success"
+    )
+
+    assert working_result["nonterminal"] == [working[0]["trigger"]]
+    assert working_result["failed"] == []
+    assert working_result["terminal_failure"] is False
+    assert failed_result["nonterminal"] == []
+    assert failed_result["failed"] == [failed[0]["trigger"]]
+    assert failed_result["terminal_failure"] is True
+
+
 def test_unrecognized_phase_is_rejected():
     state = _load_module()
     with pytest.raises(state.BuildStateError, match="phase"):

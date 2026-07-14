@@ -15,6 +15,11 @@ exactly 17 already-pending fixed Cloud Build triggers. It cannot create builds,
 invoke or edit triggers, upload source, impersonate the build service account,
 or cancel builds.
 
+The exact-batch waiter distinguishes in-flight builds from terminal failures.
+It continues polling while any expected authority is nonterminal, but exits
+immediately once an exact 17-build batch is terminal with any non-success
+result; a failed batch is never allowed to consume the full workflow timeout.
+
 For a least-privilege audit without a release, dispatch the same protected
 workflow with `authority_probe=true` and any syntactically inert `release_tag`
 input. After the production reviewer approves the environment, the probe

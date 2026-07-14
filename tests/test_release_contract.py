@@ -399,6 +399,8 @@ def test_release_batch_waiter_is_read_only_and_uses_exact_state_validator():
     assert "--page-size=1000" in script
     assert "scripts/release_build_state.py" in script
     assert "--phase" in script
+    assert 'if [[ "${ready}" == "2" ]]' in script
+    assert "terminal failure" in script
     forbidden = (
         "gcloud builds submit",
         "gcloud builds triggers run",
