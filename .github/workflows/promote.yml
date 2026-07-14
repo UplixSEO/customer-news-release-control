@@ -208,7 +208,7 @@ jobs:
             exit 1
           }
 
-      - name: Wait for prior release builds to become terminal
+      - name: Wait for prior release mutations to quiesce
         if: steps.deployment.outputs.proceed == 'true'
         env:
           LEDGER_PATH: ${{ steps.ledger.outputs.path }}
@@ -221,7 +221,7 @@ jobs:
             | [.release_tag, .sha]
             | @tsv
           ' "${LEDGER_PATH}" | while IFS=$'\t' read -r tag sha; do
-            scripts/wait_release_batch.sh terminal "${tag}" "${sha}"
+            scripts/wait_release_batch.sh quiescent "${tag}" "${sha}"
           done
 
       - name: Approve exact fixed batch

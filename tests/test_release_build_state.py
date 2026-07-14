@@ -83,6 +83,27 @@ def test_prior_batch_must_be_fully_terminal_before_next_approval():
     assert terminal["ready"] is True
 
 
+def test_prior_unapproved_pending_batch_is_quiescent_but_working_is_not():
+    state = _load_module()
+    pending = state.evaluate_batch(
+        _builds(status="PENDING"),
+        expected_authorities=_authorities(),
+        phase="quiescent",
+    )
+    mixed = _builds(status="PENDING")
+    mixed[0]["status"] = "SUCCESS"
+    mixed[1]["status"] = "WORKING"
+    active = state.evaluate_batch(
+        mixed,
+        expected_authorities=_authorities(),
+        phase="quiescent",
+    )
+
+    assert pending["ready"] is True
+    assert active["ready"] is False
+    assert active["nonterminal"] == [mixed[1]["trigger"]]
+
+
 def test_current_batch_requires_all_success_for_release_proof():
     state = _load_module()
     failed = _builds(status="SUCCESS")
