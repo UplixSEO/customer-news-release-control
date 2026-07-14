@@ -24,6 +24,11 @@ Deployment approves only build IDs still in `PENDING`; `QUEUED`, `WORKING`, and
 `SUCCESS` IDs are read back and left untouched, so proof repair never causes a
 blind redeploy.
 
+A descendant release waits only while a prior exact batch has `QUEUED` or
+`WORKING` mutations. An unapproved `PENDING` batch is already quiescent and
+cannot block the descendant indefinitely; it remains inert, then receives its
+ancestry-proven inactive status only after the descendant proof succeeds.
+
 For a least-privilege audit without a release, dispatch the same protected
 workflow with `authority_probe=true` and any syntactically inert `release_tag`
 input. After the production reviewer approves the environment, the probe

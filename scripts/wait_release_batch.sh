@@ -11,8 +11,8 @@ REGION="${REGION:-europe-west1}"
 MAX_ATTEMPTS="${MAX_ATTEMPTS:-60}"
 SLEEP_SECONDS="${SLEEP_SECONDS:-15}"
 
-[[ "${PHASE}" == "pending" || "${PHASE}" == "terminal" || "${PHASE}" == "success" ]] || {
-  echo "ERROR: phase must be pending, terminal, or success." >&2
+[[ "${PHASE}" == "pending" || "${PHASE}" == "quiescent" || "${PHASE}" == "terminal" || "${PHASE}" == "success" ]] || {
+  echo "ERROR: phase must be pending, quiescent, terminal, or success." >&2
   exit 1
 }
 [[ "${RELEASE_TAG}" =~ ^customer-news-release/[1-9][0-9]*-(promote|rollback)-[0-9a-f]{40}$ ]] || {

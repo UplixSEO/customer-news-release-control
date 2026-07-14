@@ -311,7 +311,7 @@ def test_production_workflow_uses_native_deployment_ledger_and_current_head_rere
     assert "Decide create, resume, or supersede" in names
     assert "Create or resume GitHub Deployment" in names
     assert "Re-read current private main before approval" in names
-    assert "Wait for prior release builds to become terminal" in names
+    assert "Wait for prior release mutations to quiesce" in names
     assert "Wait for exact release batch success" in names
     assert "Mark GitHub Deployment successful" not in names
     assert "Mark GitHub Deployment successful" in [
@@ -327,6 +327,7 @@ def test_production_workflow_uses_native_deployment_ledger_and_current_head_rere
     assert "scripts/github_deployment_ledger.sh" in workflow_text
     assert "scripts/release_ledger.py supersede" in workflow_text
     assert "scripts/wait_release_batch.sh" in workflow_text
+    assert 'scripts/wait_release_batch.sh quiescent "${tag}" "${sha}"' in workflow_text
     assert "cancel-in-progress: false" in workflow_text
 
 
