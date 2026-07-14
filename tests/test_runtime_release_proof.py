@@ -49,4 +49,10 @@ def test_bigquery_head_places_global_json_format_before_subcommand(
         == 0
     )
     capsys.readouterr()
-    assert calls[0][:3] == ["bq", "--format=json", "head"]
+    assert calls[0][:5] == [
+        "bq",
+        "--headless=true",
+        "--quiet=true",
+        "--format=json",
+        "head",
+    ]
