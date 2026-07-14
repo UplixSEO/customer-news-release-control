@@ -566,3 +566,30 @@ def test_approval_script_rejects_unknown_release_build(tmp_path):
     assert completed.returncode != 0
     assert "unknown builds" in completed.stderr
     assert not approval_log.exists()
+
+
+def test_approval_script_resumes_started_batch_without_reapproving_builds(tmp_path):
+    builds = _pending_builds()
+    builds[1]["status"] = "WORKING"
+    for row in builds[2:]:
+        row["status"] = "SUCCESS"
+
+    completed, approval_log = _run_approver(tmp_path, builds)
+
+    assert completed.returncode == 0, completed.stderr
+    assert approval_log.read_text(encoding="utf-8").splitlines() == [
+        "projects/customer-news-475010/locations/europe-west1/builds/build-0"
+    ]
+    assert "already-started" in completed.stdout
+    assert "already-successful" in completed.stdout
+
+
+def test_approval_script_rejects_resumed_batch_with_terminal_failure(tmp_path):
+    builds = _pending_builds()
+    builds[0]["status"] = "FAILURE"
+
+    completed, approval_log = _run_approver(tmp_path, builds)
+
+    assert completed.returncode != 0
+    assert "terminal failure" in completed.stderr
+    assert not approval_log.exists()

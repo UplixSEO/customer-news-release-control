@@ -63,10 +63,18 @@ for attempt in $(seq 1 "${MAX_ATTEMPTS}"); do
       continue
     fi
     status="$(jq -r '.[0].status' <<<"${matching}")"
-    if [[ "${status}" != "PENDING" ]]; then
-      echo "ERROR: ${trigger} is ${status}, expected PENDING before approval." >&2
-      exit 1
-    fi
+    case "${status}" in
+      PENDING|QUEUED|WORKING|SUCCESS)
+        ;;
+      FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
+        echo "ERROR: ${trigger} reached terminal failure ${status}." >&2
+        exit 1
+        ;;
+      *)
+        echo "ERROR: ${trigger} has unexpected status ${status}." >&2
+        exit 1
+        ;;
+    esac
   done
 
   if [[ "${ready}" == "true" && "$(jq 'length' <<<"${release_builds}")" == "17" ]]; then
@@ -88,17 +96,35 @@ for trigger in "${EXPECTED_AUTHORITIES[@]}"; do
     --arg tag "${RELEASE_TAG}" \
     --arg sha "${COMMIT_SHA}" \
     --arg trigger "${trigger}" '
-      .status == "PENDING"
-      and .substitutions.TAG_NAME == $tag
+      .substitutions.TAG_NAME == $tag
       and .substitutions.COMMIT_SHA == $sha
       and .substitutions.TRIGGER_NAME == $trigger
     ' <<<"${current}" >/dev/null || {
       echo "ERROR: build ${build_id} drifted before approval." >&2
       exit 1
     }
-  gcloud alpha builds approve \
-    "projects/${PROJECT_ID}/locations/${REGION}/builds/${build_id}" \
-    --comment="Protected Customer News release ${COMMIT_SHA}" \
-    --quiet >/dev/null
-  printf 'approved\t%s\t%s\n' "${trigger}" "${build_id}"
+  status="$(jq -r '.status' <<<"${current}")"
+  case "${status}" in
+    PENDING)
+      gcloud alpha builds approve \
+        "projects/${PROJECT_ID}/locations/${REGION}/builds/${build_id}" \
+        --comment="Protected Customer News release ${COMMIT_SHA}" \
+        --quiet >/dev/null
+      printf 'approved\t%s\t%s\n' "${trigger}" "${build_id}"
+      ;;
+    QUEUED|WORKING)
+      printf 'already-started\t%s\t%s\n' "${trigger}" "${build_id}"
+      ;;
+    SUCCESS)
+      printf 'already-successful\t%s\t%s\n' "${trigger}" "${build_id}"
+      ;;
+    FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
+      echo "ERROR: ${trigger} reached terminal failure ${status}." >&2
+      exit 1
+      ;;
+    *)
+      echo "ERROR: ${trigger} has unexpected status ${status}." >&2
+      exit 1
+      ;;
+  esac
 done
