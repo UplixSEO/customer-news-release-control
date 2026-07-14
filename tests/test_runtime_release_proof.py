@@ -1,7 +1,10 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import sys
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,3 +59,30 @@ def test_bigquery_head_places_global_json_format_before_subcommand(
         "--format=json",
         "head",
     ]
+
+
+def test_run_json_accepts_complete_document_after_wif_preamble(monkeypatch):
+    proof = _load_module()
+    completed = subprocess.CompletedProcess(
+        args=["bq"],
+        returncode=0,
+        stdout='Hosted credential notice\n[{"target_id":"core-ddl-prod"}]\n',
+        stderr="",
+    )
+    monkeypatch.setattr(proof.subprocess, "run", lambda *args, **kwargs: completed)
+
+    assert proof.run_json(["bq", "head"]) == [{"target_id": "core-ddl-prod"}]
+
+
+def test_run_json_rejects_non_whitespace_after_document(monkeypatch):
+    proof = _load_module()
+    completed = subprocess.CompletedProcess(
+        args=["bq"],
+        returncode=0,
+        stdout='notice\n[{"target_id":"core-ddl-prod"}]\ntrailing output',
+        stderr="",
+    )
+    monkeypatch.setattr(proof.subprocess, "run", lambda *args, **kwargs: completed)
+
+    with pytest.raises(proof.ProofError, match="invalid JSON"):
+        proof.run_json(["bq", "head"])
