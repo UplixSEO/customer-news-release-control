@@ -204,8 +204,8 @@ def main(argv: list[str] | None = None) -> int:
     marker_rows = run_json(
         [
             "bq",
-            "head",
             "--format=json",
+            "head",
             "--max_rows=100",
             f"{args.project}:customer_news_core.release_proof",
         ]
