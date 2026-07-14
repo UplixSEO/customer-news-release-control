@@ -33,10 +33,21 @@ def run_json(args: list[str]) -> Any:
         if "NOT_FOUND" in detail or "not found" in detail.lower():
             raise FileNotFoundError(detail)
         raise ProofError(f"read command failed: {args[0]} {args[1] if len(args) > 1 else ''}")
+    raw = completed.stdout or "{}"
     try:
-        return json.loads(completed.stdout or "{}")
-    except json.JSONDecodeError as exc:
-        raise ProofError(f"invalid JSON from {args[0]}") from exc
+        return json.loads(raw)
+    except json.JSONDecodeError as original:
+        decoder = json.JSONDecoder()
+        for match in re.finditer(r"(?m)^[\t ]*([\[{])", raw):
+            start = match.start(1)
+            try:
+                value, end = decoder.raw_decode(raw, start)
+            except json.JSONDecodeError:
+                continue
+            if raw[end:].strip():
+                break
+            return value
+        raise ProofError(f"invalid JSON from {args[0]}") from original
 
 
 def first_image(value: Any) -> str | None:
