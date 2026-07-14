@@ -339,6 +339,36 @@ jobs:
           DEPLOYMENT_DESCRIPTION: Exact build and runtime proof succeeded
         run: scripts/github_deployment_ledger.sh status
 
+      - name: Supersede ancestry-proven older Deployments
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+          SUCCESSFUL_SHA: ${{ needs.promote.outputs.sha }}
+        run: |
+          ledger="${RUNNER_TEMP}/post-proof-ledger.json"
+          ancestry="${RUNNER_TEMP}/post-proof-ancestry.json"
+          targets="${RUNNER_TEMP}/supersession-targets.json"
+          scripts/github_deployment_ledger.sh snapshot > "${ledger}"
+          GH_TOKEN="${UPSTREAM_GH_TOKEN}" scripts/collect_upstream_ancestry.sh \
+            "${SUCCESSFUL_SHA}" "${SUCCESSFUL_SHA}" "${ledger}" > "${ancestry}"
+          jq -n \
+            --arg successful_sha "${SUCCESSFUL_SHA}" \
+            --argjson entries "$(cat "${ledger}")" \
+            --argjson ancestry "$(cat "${ancestry}")" '{
+              successful_sha: $successful_sha,
+              entries: $entries,
+              ancestry: $ancestry,
+              release_succeeded: true
+            }' | scripts/release_ledger.py supersede > "${targets}"
+          jq -c '.[]' "${targets}" | while read -r target; do
+            deployment_id="$(jq -r '.deployment_id' <<<"${target}")"
+            superseded_by="$(jq -r '.superseded_by' <<<"${target}")"
+            DEPLOYMENT_ID="${deployment_id}" DEPLOYMENT_STATE=inactive \
+              SUPERSEDED_BY="${superseded_by}" \
+              scripts/github_deployment_ledger.sh status
+          done
+
       - name: Mark GitHub Deployment failed
         if: failure()
         env:

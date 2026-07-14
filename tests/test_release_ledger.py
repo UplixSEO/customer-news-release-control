@@ -174,6 +174,7 @@ def test_supersession_targets_are_selected_only_after_new_success():
         _entry(1, old, f"customer-news-release/1-promote-{old}", "success"),
         _entry(2, unrelated, f"customer-news-release/1-promote-{unrelated}", "failure"),
         _entry(3, current, f"customer-news-release/2-promote-{current}", "in_progress"),
+        _entry(4, old, f"customer-news-release/3-promote-{old}", "in_progress"),
     ]
 
     assert ledger.supersession_targets(
@@ -187,4 +188,7 @@ def test_supersession_targets_are_selected_only_after_new_success():
         entries=entries,
         ancestry={(old, current): True, (unrelated, current): False},
         release_succeeded=True,
-    ) == [{"deployment_id": 1, "superseded_by": current}]
+    ) == [
+        {"deployment_id": 1, "superseded_by": current},
+        {"deployment_id": 4, "superseded_by": current},
+    ]

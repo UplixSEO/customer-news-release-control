@@ -256,11 +256,15 @@ def test_production_workflow_uses_native_deployment_ledger_and_current_head_rere
     assert "Mark GitHub Deployment successful" in [
         step["name"] for step in workflow["jobs"]["prove"]["steps"]
     ]
+    assert "Supersede ancestry-proven older Deployments" in [
+        step["name"] for step in workflow["jobs"]["prove"]["steps"]
+    ]
     assert names.index("Re-read current private main before approval") < names.index(
         "Approve exact fixed batch"
     )
     assert "scripts/release_ledger.py" in workflow_text
     assert "scripts/github_deployment_ledger.sh" in workflow_text
+    assert "scripts/release_ledger.py supersede" in workflow_text
     assert "scripts/wait_release_batch.sh" in workflow_text
     assert "cancel-in-progress: false" in workflow_text
 

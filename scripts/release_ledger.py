@@ -16,6 +16,7 @@ TAG_RE = re.compile(
     r"(?P<mode>promote|rollback)-(?P<sha>[0-9a-f]{40})$"
 )
 RESUMABLE_STATES = {"pending", "in_progress", "failure"}
+SUPERSEDABLE_STATES = RESUMABLE_STATES | {"queued", "error", "success"}
 
 
 class LedgerError(RuntimeError):
@@ -159,7 +160,7 @@ def supersession_targets(
     targets: list[dict[str, Any]] = []
     for entry in entries:
         prior_sha = str(entry.get("sha", ""))
-        if entry.get("state") != "success" or prior_sha == successful_sha:
+        if entry.get("state") not in SUPERSEDABLE_STATES or prior_sha == successful_sha:
             continue
         if _is_ancestor(prior_sha, successful_sha, ancestry):
             targets.append(
