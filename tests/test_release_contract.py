@@ -79,7 +79,10 @@ def test_auto_promote_poller_is_scheduled_ledger_gated_and_holds_no_cloud_author
 
     assert list(workflow["jobs"]) == ["detect-and-dispatch"]
     job = workflow["jobs"]["detect-and-dispatch"]
-    assert "environment" not in job
+    # The read-only upstream App key is a production-environment secret, so
+    # the poller binds the same gate as every release job. It still must not
+    # request id-token authority, so it can never exchange WIF credentials.
+    assert job["environment"] == "production"
     assert "permissions" not in job
 
     app_steps = [

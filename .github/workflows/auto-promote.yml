@@ -23,6 +23,11 @@ jobs:
     name: Detect promote candidate and dispatch
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # The read-only upstream App key is a production-environment secret, so
+    # every poll passes the same environment gate as a release job. The job
+    # never requests OIDC token authority, so it cannot exchange cloud
+    # credentials even inside the gate.
+    environment: production
     steps:
       - name: Checkout public controller
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
