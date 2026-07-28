@@ -145,6 +145,47 @@ def decide_release(
     }
 
 
+def auto_promote_decision(
+    *,
+    head_sha: str,
+    candidate_tag: str,
+    entries: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Decide whether the scheduled poller should dispatch a promote run.
+
+    Pure state-in/decision-out like decide_release: the poller supplies the
+    private upstream head, the newest promote tag pointing at that exact head
+    (empty when the guard has not minted one), and the normalized Deployment
+    ledger snapshot. Candidate validation stays in verify_upstream_candidate.sh;
+    this only prevents pointless or dangerous dispatches. In particular, a
+    successful ledger entry with a newer release epoch pins the runtime after a
+    rollback: the stale head must never be re-promoted automatically.
+    """
+
+    if not SHA_RE.fullmatch(head_sha):
+        raise LedgerError("head SHA must be an exact 40-hex value")
+    if not candidate_tag:
+        return {"dispatch": False, "reason": "no_candidate"}
+    match = TAG_RE.fullmatch(candidate_tag)
+    if match is None or match.group("sha") != head_sha or match.group("mode") != "promote":
+        raise LedgerError("candidate tag must be a promote tag for the exact upstream head")
+    candidate_epoch = int(match.group("epoch"))
+
+    accepted_epochs: list[int] = []
+    for entry in entries:
+        if entry.get("state") != "success":
+            continue
+        if entry.get("sha") == head_sha:
+            return {"dispatch": False, "reason": "already_accepted"}
+        entry_match = TAG_RE.fullmatch(str(entry.get("release_tag") or ""))
+        if entry_match is not None:
+            accepted_epochs.append(int(entry_match.group("epoch")))
+    if accepted_epochs and max(accepted_epochs) > candidate_epoch:
+        return {"dispatch": False, "reason": "accepted_epoch_supersedes_candidate"}
+
+    return {"dispatch": True, "reason": "candidate_ready"}
+
+
 def supersession_targets(
     *,
     successful_sha: str,
@@ -184,14 +225,16 @@ def _ancestry_from_json(raw: Mapping[str, Any]) -> dict[tuple[str, str], bool]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["decide", "supersede"])
+    parser.add_argument("operation", choices=["decide", "supersede", "auto-promote"])
     args = parser.parse_args(argv)
     payload = json.load(sys.stdin)
     ancestry = _ancestry_from_json(payload.pop("ancestry", {}))
     if args.operation == "decide":
         result = decide_release(ancestry=ancestry, **payload)
-    else:
+    elif args.operation == "supersede":
         result = supersession_targets(ancestry=ancestry, **payload)
+    else:
+        result = auto_promote_decision(**payload)
     json.dump(result, sys.stdout, sort_keys=True)
     sys.stdout.write("\n")
     return 0
