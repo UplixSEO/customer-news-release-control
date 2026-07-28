@@ -293,7 +293,9 @@ def test_auto_promote_dispatches_resume_for_failed_head_without_newer_acceptance
 def test_auto_promote_rejects_candidate_tag_for_different_sha():
     ledger = _load_module()
 
-    with pytest.raises(ledger.LedgerError):
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
         ledger.auto_promote_decision(
             head_sha="b" * 40,
             candidate_tag=f"customer-news-release/5-promote-{'c' * 40}",
@@ -305,7 +307,9 @@ def test_auto_promote_rejects_rollback_candidate_tag():
     ledger = _load_module()
     sha = "b" * 40
 
-    with pytest.raises(ledger.LedgerError):
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
         ledger.auto_promote_decision(
             head_sha=sha,
             candidate_tag=f"customer-news-release/5-rollback-{sha}",
@@ -313,10 +317,24 @@ def test_auto_promote_rejects_rollback_candidate_tag():
         )
 
 
+def test_auto_promote_rejects_unparseable_candidate_tag():
+    ledger = _load_module()
+    sha = "b" * 40
+
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
+        ledger.auto_promote_decision(
+            head_sha=sha,
+            candidate_tag=f"customer-news-release/0-promote-{sha}",
+            entries=[],
+        )
+
+
 def test_auto_promote_rejects_malformed_head_sha():
     ledger = _load_module()
 
-    with pytest.raises(ledger.LedgerError):
+    with pytest.raises(ledger.LedgerError, match="exact 40-hex value"):
         ledger.auto_promote_decision(
             head_sha="not-a-sha", candidate_tag="", entries=[]
         )

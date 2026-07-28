@@ -88,7 +88,7 @@ Léonard's personal 1Password stack is not a dependency or recovery store.
 
 ```bash
 python -m pip install -r requirements-dev.txt
-python -m pytest tests/test_release_contract.py -q
+python -m pytest tests/ -q
 bash -n scripts/*.sh
 ```
 
@@ -109,7 +109,11 @@ Production convergence uses GitHub Deployments in this public repository as
 the native append-only ledger. The deterministic decision helper in
 `scripts/release_ledger.py` never calls an API: it consumes normalized
 Deployment state and upstream ancestry proof, then returns `create`, `resume`,
-`already_succeeded`, or `superseded`. An interrupted release resumes the same
+`already_succeeded`, or `superseded`. Its `auto-promote` operation feeds the
+poller the same way — from the upstream head, its candidate tag, and the
+ledger snapshot it returns `dispatch` plus a reason (`no_candidate`,
+`already_accepted`, `accepted_epoch_supersedes_candidate`, or
+`candidate_ready`). An interrupted release resumes the same
 Deployment ID; an older candidate becomes inactive only after a proven
 descendant succeeds. Rollback creates a new release-tag epoch and is accepted
 only for a compatibility-approved ancestor with a non-empty reason.

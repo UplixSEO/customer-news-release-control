@@ -52,13 +52,14 @@ jobs:
           head_sha="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
           [[ "${head_sha}" =~ ^[0-9a-f]{40}$ ]]
           candidate_tag="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/matching-refs/tags/${TAG_PREFIX}" \
-            | jq -r --arg sha "${head_sha}" '
+            | jq -r --arg sha "${head_sha}" --arg prefix "${TAG_PREFIX}" '
                 [ .[]
                   | .ref
                   | sub("^refs/tags/"; "")
-                  | select(endswith("-promote-" + $sha))
+                  | select(test("^" + $prefix + "/[1-9][0-9]*-promote-" + $sha + "$"))
                 ]
-                | last // empty
+                | max_by(capture("/(?<epoch>[1-9][0-9]*)-promote-").epoch | tonumber)
+                // empty
               ')"
           echo "head_sha=${head_sha}" >> "${GITHUB_OUTPUT}"
           echo "tag=${candidate_tag}" >> "${GITHUB_OUTPUT}"
@@ -81,7 +82,12 @@ jobs:
               candidate_tag: $candidate_tag,
               entries: $entries
             }' | scripts/release_ledger.py auto-promote)"
-          echo "Decision for head ${HEAD_SHA}: ${decision}"
+          reason="$(jq -r '.reason' <<<"${decision}")"
+          if [[ -n "${CANDIDATE_TAG}" ]]; then
+            echo "Decision for candidate ${CANDIDATE_TAG}: ${reason}"
+          else
+            echo "Decision: ${reason}"
+          fi
           echo "dispatch=$(jq -r '.dispatch' <<<"${decision}")" >> "${GITHUB_OUTPUT}"
 
       - name: Hold while a promote run is already active

@@ -104,6 +104,17 @@ def test_auto_promote_poller_is_scheduled_ledger_gated_and_holds_no_cloud_author
     assert "gh workflow run promote.yml" in commands
     assert "--ref main" in commands
     assert "-f mode=promote" in commands
+    assert '-f release_tag="${RELEASE_TAG}"' in commands
+
+    steps_by_name = {str(step.get("name", "")): step for step in job["steps"]}
+    hold = steps_by_name["Hold while a promote run is already active"]
+    dispatch = steps_by_name["Dispatch promote for the exact candidate"]
+    assert hold["if"] == "steps.decision.outputs.dispatch == 'true'"
+    assert dispatch["if"] == (
+        "steps.decision.outputs.dispatch == 'true' "
+        "&& steps.inflight.outputs.proceed == 'true'"
+    )
+    assert dispatch["env"]["RELEASE_TAG"] == "${{ steps.candidate.outputs.tag }}"
 
     # The unattended poller only selects a tag; it must never carry rollback,
     # probe, or cloud-identity authority of its own.
