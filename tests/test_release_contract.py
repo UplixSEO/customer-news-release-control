@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "promote.yml"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 NEGATIVE_WIF_WORKFLOW = ROOT / ".github" / "workflows" / "wif-negative.yml"
+AUTO_PROMOTE_WORKFLOW = ROOT / ".github" / "workflows" / "auto-promote.yml"
 AUTHORITIES = ROOT / "config" / "release-authorities.txt"
 VERIFY_UPSTREAM = ROOT / "scripts" / "verify_upstream_candidate.sh"
 APPROVE_BUILDS = ROOT / "scripts" / "approve_pending_release.sh"
@@ -22,7 +23,12 @@ WAIT_RELEASE_BATCH = ROOT / "scripts" / "wait_release_batch.sh"
 
 
 def test_every_github_action_is_pinned_to_an_immutable_commit():
-    for workflow_path in (WORKFLOW, CI_WORKFLOW, NEGATIVE_WIF_WORKFLOW):
+    for workflow_path in (
+        WORKFLOW,
+        CI_WORKFLOW,
+        NEGATIVE_WIF_WORKFLOW,
+        AUTO_PROMOTE_WORKFLOW,
+    ):
         workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
         for job in workflow["jobs"].values():
             for step in job.get("steps", []):
@@ -51,6 +57,75 @@ def test_public_workflow_is_reviewer_gated_and_serialized():
         "deployments": "write",
         "id-token": "write",
     }
+
+
+def test_auto_promote_poller_is_scheduled_ledger_gated_and_holds_no_cloud_authority():
+    text = AUTO_PROMOTE_WORKFLOW.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(text)
+
+    triggers = workflow.get("on") or workflow.get(True)
+    assert triggers["schedule"] == [{"cron": "*/30 * * * *"}]
+    assert "workflow_dispatch" in triggers
+
+    assert workflow["permissions"] == {
+        "contents": "read",
+        "actions": "write",
+        "deployments": "read",
+    }
+    assert workflow["concurrency"] == {
+        "group": "customer-news-auto-promote",
+        "cancel-in-progress": False,
+    }
+
+    assert list(workflow["jobs"]) == ["detect-and-dispatch"]
+    job = workflow["jobs"]["detect-and-dispatch"]
+    # The read-only upstream App key is a production-environment secret, so
+    # the poller binds the same gate as every release job. It still must not
+    # request id-token authority, so it can never exchange WIF credentials.
+    assert job["environment"] == "production"
+    assert "permissions" not in job
+
+    app_steps = [
+        step
+        for step in job["steps"]
+        if "create-github-app-token" in str(step.get("uses", ""))
+    ]
+    assert len(app_steps) == 1
+    app_with = app_steps[0]["with"]
+    assert app_with["owner"] == "UplixSEO"
+    assert app_with["repositories"] == "Uplix-Agents"
+    assert app_with["permission-contents"] == "read"
+    assert app_with["permission-metadata"] == "read"
+
+    commands = "\n".join(str(step.get("run", "")) for step in job["steps"])
+    assert "github_deployment_ledger.sh snapshot" in commands
+    assert "release_ledger.py auto-promote" in commands
+    assert "workflows/promote.yml/runs" in commands
+    assert "gh workflow run promote.yml" in commands
+    assert "--ref main" in commands
+    assert "-f mode=promote" in commands
+    assert '-f release_tag="${RELEASE_TAG}"' in commands
+
+    steps_by_name = {str(step.get("name", "")): step for step in job["steps"]}
+    hold = steps_by_name["Hold while a promote run is already active"]
+    dispatch = steps_by_name["Dispatch promote for the exact candidate"]
+    assert hold["if"] == "steps.decision.outputs.dispatch == 'true'"
+    assert dispatch["if"] == (
+        "steps.decision.outputs.dispatch == 'true' "
+        "&& steps.inflight.outputs.proceed == 'true'"
+    )
+    assert dispatch["env"]["RELEASE_TAG"] == "${{ steps.candidate.outputs.tag }}"
+
+    # The unattended poller only selects a tag; it must never carry rollback,
+    # probe, or cloud-identity authority of its own.
+    for forbidden in (
+        "rollback",
+        "compatibility_approved",
+        "authority_probe",
+        "id-token",
+        "google-github-actions",
+    ):
+        assert forbidden not in text
 
 
 def test_public_main_has_a_read_only_pull_request_check():

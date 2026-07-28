@@ -1,0 +1,128 @@
+name: Auto-promote Customer News release
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  deployments: read
+
+concurrency:
+  group: customer-news-auto-promote
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPOSITORY: UplixSEO/Uplix-Agents
+  TAG_PREFIX: customer-news-release
+
+jobs:
+  detect-and-dispatch:
+    name: Detect promote candidate and dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The read-only upstream App key is a production-environment secret, so
+    # every poll passes the same environment gate as a release job. The job
+    # never requests OIDC token authority, so it cannot exchange cloud
+    # credentials even inside the gate.
+    environment: production
+    steps:
+      - name: Checkout public controller
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Mint read-only private-upstream token
+        id: upstream-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.UPSTREAM_READ_APP_ID }}
+          private-key: ${{ secrets.UPSTREAM_READ_APP_PRIVATE_KEY }}
+          owner: UplixSEO
+          repositories: Uplix-Agents
+          permission-contents: read
+          permission-metadata: read
+
+      - name: Resolve upstream head and its promote candidate tag
+        id: candidate
+        env:
+          GH_TOKEN: ${{ steps.upstream-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          head_sha="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          [[ "${head_sha}" =~ ^[0-9a-f]{40}$ ]]
+          candidate_tag="$(gh api "repos/${UPSTREAM_REPOSITORY}/git/matching-refs/tags/${TAG_PREFIX}" \
+            | jq -r --arg sha "${head_sha}" --arg prefix "${TAG_PREFIX}" '
+                [ .[]
+                  | .ref
+                  | sub("^refs/tags/"; "")
+                  | select(test("^" + $prefix + "/[1-9][0-9]*-promote-" + $sha + "$"))
+                ]
+                | max_by(capture("/(?<epoch>[1-9][0-9]*)-promote-").epoch | tonumber)
+                // empty
+              ')"
+          echo "head_sha=${head_sha}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${candidate_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Decide dispatch from the Deployment ledger
+        id: decision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.candidate.outputs.head_sha }}
+          CANDIDATE_TAG: ${{ steps.candidate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          ledger_path="${RUNNER_TEMP}/customer-news-ledger.json"
+          scripts/github_deployment_ledger.sh snapshot > "${ledger_path}"
+          decision="$(jq -n \
+            --arg head_sha "${HEAD_SHA}" \
+            --arg candidate_tag "${CANDIDATE_TAG}" \
+            --argjson entries "$(cat "${ledger_path}")" '{
+              head_sha: $head_sha,
+              candidate_tag: $candidate_tag,
+              entries: $entries
+            }' | scripts/release_ledger.py auto-promote)"
+          reason="$(jq -r '.reason' <<<"${decision}")"
+          if [[ -n "${CANDIDATE_TAG}" ]]; then
+            echo "Decision for candidate ${CANDIDATE_TAG}: ${reason}"
+          else
+            echo "Decision: ${reason}"
+          fi
+          echo "dispatch=$(jq -r '.dispatch' <<<"${decision}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Hold while a promote run is already active
+        id: inflight
+        if: steps.decision.outputs.dispatch == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          active="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/promote.yml/runs?per_page=30" \
+            --jq '[ .workflow_runs[]
+                    | select(.status == "queued"
+                        or .status == "in_progress"
+                        or .status == "waiting"
+                        or .status == "requested"
+                        or .status == "pending")
+                  ] | length')"
+          if [[ "${active}" == "0" ]]; then
+            echo "proceed=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "proceed=false" >> "${GITHUB_OUTPUT}"
+            echo "A promote run is already queued, waiting, or in progress; not dispatching."
+          fi
+
+      - name: Dispatch promote for the exact candidate
+        if: steps.decision.outputs.dispatch == 'true' && steps.inflight.outputs.proceed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh workflow run promote.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref main \
+            -f release_tag="${RELEASE_TAG}" \
+            -f mode=promote
+          echo "Dispatched promote for ${RELEASE_TAG}."

@@ -29,5 +29,5 @@ jobs:
 
       - name: Verify release contract
         run: |
-          python -m pytest tests/test_release_contract.py -q
+          python -m pytest tests/ -q
           bash -n scripts/*.sh

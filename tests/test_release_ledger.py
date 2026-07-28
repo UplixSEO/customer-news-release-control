@@ -1,5 +1,7 @@
 import importlib.util
+import json
 from pathlib import Path
+import subprocess
 import sys
 
 import pytest
@@ -192,3 +194,169 @@ def test_supersession_targets_are_selected_only_after_new_success():
         {"deployment_id": 1, "superseded_by": current},
         {"deployment_id": 4, "superseded_by": current},
     ]
+
+
+def test_auto_promote_skips_when_no_candidate_tag():
+    ledger = _load_module()
+
+    decision = ledger.auto_promote_decision(
+        head_sha="b" * 40, candidate_tag="", entries=[]
+    )
+
+    assert decision == {"dispatch": False, "reason": "no_candidate"}
+
+
+def test_auto_promote_dispatches_first_release_with_empty_ledger():
+    ledger = _load_module()
+    sha = "b" * 40
+
+    decision = ledger.auto_promote_decision(
+        head_sha=sha,
+        candidate_tag=f"customer-news-release/2-promote-{sha}",
+        entries=[],
+    )
+
+    assert decision == {"dispatch": True, "reason": "candidate_ready"}
+
+
+def test_auto_promote_dispatches_new_candidate_over_older_accepted_release():
+    ledger = _load_module()
+    prior = "a" * 40
+    head = "b" * 40
+
+    decision = ledger.auto_promote_decision(
+        head_sha=head,
+        candidate_tag=f"customer-news-release/9-promote-{head}",
+        entries=[
+            _entry(1, prior, f"customer-news-release/7-promote-{prior}", "success"),
+        ],
+    )
+
+    assert decision == {"dispatch": True, "reason": "candidate_ready"}
+
+
+def test_auto_promote_skips_when_head_is_already_accepted():
+    ledger = _load_module()
+    head = "b" * 40
+
+    decision = ledger.auto_promote_decision(
+        head_sha=head,
+        candidate_tag=f"customer-news-release/9-promote-{head}",
+        entries=[
+            _entry(1, head, f"customer-news-release/5-promote-{head}", "success"),
+        ],
+    )
+
+    assert decision == {"dispatch": False, "reason": "already_accepted"}
+
+
+def test_auto_promote_skips_stale_head_after_accepted_rollback_epoch():
+    ledger = _load_module()
+    ancestor = "a" * 40
+    head = "b" * 40
+
+    decision = ledger.auto_promote_decision(
+        head_sha=head,
+        candidate_tag=f"customer-news-release/5-promote-{head}",
+        entries=[
+            _entry(1, head, f"customer-news-release/5-promote-{head}", "failure"),
+            _entry(
+                2,
+                ancestor,
+                f"customer-news-release/7-rollback-{ancestor}",
+                "success",
+                mode="rollback",
+            ),
+        ],
+    )
+
+    assert decision == {
+        "dispatch": False,
+        "reason": "accepted_epoch_supersedes_candidate",
+    }
+
+
+def test_auto_promote_dispatches_resume_for_failed_head_without_newer_acceptance():
+    ledger = _load_module()
+    head = "b" * 40
+    tag = f"customer-news-release/5-promote-{head}"
+
+    decision = ledger.auto_promote_decision(
+        head_sha=head,
+        candidate_tag=tag,
+        entries=[_entry(1, head, tag, "failure")],
+    )
+
+    assert decision == {"dispatch": True, "reason": "candidate_ready"}
+
+
+def test_auto_promote_rejects_candidate_tag_for_different_sha():
+    ledger = _load_module()
+
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
+        ledger.auto_promote_decision(
+            head_sha="b" * 40,
+            candidate_tag=f"customer-news-release/5-promote-{'c' * 40}",
+            entries=[],
+        )
+
+
+def test_auto_promote_rejects_rollback_candidate_tag():
+    ledger = _load_module()
+    sha = "b" * 40
+
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
+        ledger.auto_promote_decision(
+            head_sha=sha,
+            candidate_tag=f"customer-news-release/5-rollback-{sha}",
+            entries=[],
+        )
+
+
+def test_auto_promote_rejects_unparseable_candidate_tag():
+    ledger = _load_module()
+    sha = "b" * 40
+
+    with pytest.raises(
+        ledger.LedgerError, match="promote tag for the exact upstream head"
+    ):
+        ledger.auto_promote_decision(
+            head_sha=sha,
+            candidate_tag=f"customer-news-release/0-promote-{sha}",
+            entries=[],
+        )
+
+
+def test_auto_promote_rejects_malformed_head_sha():
+    ledger = _load_module()
+
+    with pytest.raises(ledger.LedgerError, match="exact 40-hex value"):
+        ledger.auto_promote_decision(
+            head_sha="not-a-sha", candidate_tag="", entries=[]
+        )
+
+
+def test_auto_promote_cli_operation_consumes_snapshot_payload():
+    sha = "b" * 40
+    payload = {
+        "head_sha": sha,
+        "candidate_tag": f"customer-news-release/2-promote-{sha}",
+        "entries": [],
+    }
+
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "auto-promote"],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert json.loads(completed.stdout) == {
+        "dispatch": True,
+        "reason": "candidate_ready",
+    }

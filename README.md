@@ -6,11 +6,13 @@ News source, customer identifiers, build payloads, runtime artifacts, or
 credentials.
 
 The private repository's successful `main` guard creates an annotated tag named
-`customer-news-release/<run-id>-(promote|rollback)-<40-hex-sha>`. A reviewer dispatches
-`promote.yml` with that exact tag. The production environment releases a
-read-only GitHub App key; the workflow verifies the private tag and successful
-guard run plus the unique merged `dev`-to-`main` PR for that SHA, exchanges
-OIDC for the approver-only GCP identity, then approves
+`customer-news-release/<run-id>-(promote|rollback)-<40-hex-sha>`. The scheduled
+`auto-promote.yml` poller — or a human, via manual dispatch — dispatches
+`promote.yml` with that exact tag, and the `production` environment holds each
+release job behind a cancellable wait timer. The production environment
+releases a read-only GitHub App key; the workflow verifies the private tag and
+successful guard run plus the unique merged `dev`-to-`main` PR for that SHA,
+exchanges OIDC for the approver-only GCP identity, then approves
 exactly 17 already-pending fixed Cloud Build triggers. It cannot create builds,
 invoke or edit triggers, upload source, impersonate the build service account,
 or cancel builds.
@@ -29,9 +31,43 @@ A descendant release waits only while a prior exact batch has `QUEUED` or
 cannot block the descendant indefinitely; it remains inert, then receives its
 ancestry-proven inactive status only after the descendant proof succeeds.
 
+## Automatic promotion
+
+`auto-promote.yml` polls every 30 minutes and dispatches `promote.yml` when
+the private upstream head has a matching promote release tag. The poller only
+selects a tag: it resolves the upstream head and its exact `…-promote-<sha>`
+tag through the same read-only GitHub App, then asks the deterministic helper
+(`release_ledger.py auto-promote`) whether to dispatch. It skips when no
+candidate tag exists yet, when the head is already the accepted deployment,
+when a successful ledger entry with a newer release epoch pins the runtime —
+after a rollback the stale head is never re-promoted; automation resumes only
+with the next release tag — and it holds while a promote run is already
+queued, waiting, or in progress. Candidate validation stays entirely in
+`promote.yml`, so a bad candidate fails exactly as a manual dispatch would.
+Because the App key is a production-environment secret, each poll passes the
+same environment gate as a release job; the poller never requests OIDC token
+authority, so it cannot exchange cloud credentials.
+
+This inverts the release gate's failure mode. The `production` environment
+applies a cancellable wait timer instead of a required reviewer: when nobody
+acts, a valid candidate now ships after the timer instead of stalling
+indefinitely, and cancelling the run inside the wait window is the manual
+intervention. Cancelling delays one attempt only — the poller dispatches
+again on a later cycle while the candidate remains valid. To hold a release
+durably, disable `auto-promote.yml`, roll back (the new epoch pins the
+runtime), or land a superseding candidate. The timer applies to the poller,
+`promote`, and `prove` jobs independently; budget release latency
+accordingly. Merging the private `dev`-to-`main` pull request remains the
+human decision that creates a release candidate.
+
+GitHub suspends cron triggers in public repositories after 60 days without
+repository activity. The deploy-drift probe remains the independent backstop
+that alerts while a valid candidate is not shipping; a manual dispatch or
+re-enable restores the automatic path.
+
 For a least-privilege audit without a release, dispatch the same protected
 workflow with `authority_probe=true` and any syntactically inert `release_tag`
-input. After the production reviewer approves the environment, the probe
+input. After the production environment gate admits the run, the probe
 verifies the App's exact one-repository/read-only boundary and the federated
 identity's effective permissions. Candidate validation and the 17-build
 approval step are skipped in this mode, so no build, release, or deployment is
@@ -41,7 +77,7 @@ The controller also carries fail-closed WIF denial checks. Setting
 `nonproduction_wif_probe=true` on `promote.yml` proves that the exact trusted
 workflow cannot exchange outside the `production` environment. The separate
 `wif-negative.yml` proves that a different workflow is denied even after the
-production reviewer gate and that pull-request claims are denied. These jobs
+production environment gate and that pull-request claims are denied. These jobs
 only invoke the native OIDC authentication action and assert its failure; they
 contain no GitHub, Cloud Build, IAM, or storage mutation commands.
 
@@ -52,7 +88,7 @@ Léonard's personal 1Password stack is not a dependency or recovery store.
 
 ```bash
 python -m pip install -r requirements-dev.txt
-python -m pytest tests/test_release_contract.py -q
+python -m pytest tests/ -q
 bash -n scripts/*.sh
 ```
 
@@ -60,7 +96,7 @@ bash -n scripts/*.sh
 
 The public surface is intentionally limited to generic workflow code, fixed
 trigger names, the approved private commit SHA, release timing/status, and the
-reviewer recorded by GitHub. It must never publish private source, customer
+dispatching actor recorded by GitHub. It must never publish private source, customer
 names or identifiers, Cloud Build payloads, logs, or artifacts.
 
 The private-upstream GitHub App is installed only on `Uplix-Agents` with
@@ -73,7 +109,11 @@ Production convergence uses GitHub Deployments in this public repository as
 the native append-only ledger. The deterministic decision helper in
 `scripts/release_ledger.py` never calls an API: it consumes normalized
 Deployment state and upstream ancestry proof, then returns `create`, `resume`,
-`already_succeeded`, or `superseded`. An interrupted release resumes the same
+`already_succeeded`, or `superseded`. Its `auto-promote` operation feeds the
+poller the same way — from the upstream head, its candidate tag, and the
+ledger snapshot it returns `dispatch` plus a reason (`no_candidate`,
+`already_accepted`, `accepted_epoch_supersedes_candidate`, or
+`candidate_ready`). An interrupted release resumes the same
 Deployment ID; an older candidate becomes inactive only after a proven
 descendant succeeds. Rollback creates a new release-tag epoch and is accepted
 only for a compatibility-approved ancestor with a non-empty reason.
