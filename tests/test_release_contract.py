@@ -629,6 +629,43 @@ def test_upstream_verifier_still_selects_classic_dev_to_main_merge() -> None:
     assert parsed[0]["head"]["ref"] == "dev"
 
 
+def test_upstream_verifier_rejects_non_unique_main_merge() -> None:
+    script = VERIFY_UPSTREAM.read_text(encoding="utf-8")
+    program = _extract_promotion_pr_jq(script)
+    sha = "2a24624e53252bb692572f2e9d940239d1f06b04"
+    duplicate = {
+        "number": 999,
+        "state": "closed",
+        "merged_at": "2026-08-25T21:05:00Z",
+        "merge_commit_sha": sha,
+        "base": {"ref": "main", "repo": {"full_name": "UplixSEO/Uplix-Agents"}},
+        "head": {"ref": "dev", "repo": {"full_name": "UplixSEO/Uplix-Agents"}},
+    }
+    pulls = json.loads(
+        (ROOT / "tests" / "fixtures" / "upstream_commit_pulls.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    pulls.append(duplicate)
+    selected = subprocess.check_output(
+        [
+            "jq",
+            "-c",
+            "--arg",
+            "sha",
+            sha,
+            "--arg",
+            "repository",
+            "UplixSEO/Uplix-Agents",
+            program,
+        ],
+        input=json.dumps(pulls),
+        text=True,
+    )
+    parsed = json.loads(selected)
+    assert len(parsed) == 2
+
+
 def test_approval_script_accepts_only_exact_seventeen_pending_builds():
     authorities = [
         line.strip()
