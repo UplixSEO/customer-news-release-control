@@ -566,8 +566,104 @@ def test_upstream_verifier_binds_tag_sha_and_successful_private_run():
     assert "git/tags/${TAG_OBJECT_SHA}" in script
     assert "commits/${EXPECTED_SHA}/pulls" in script
     assert '.base.ref == "main"' in script
-    assert '.head.ref == "dev"' in script
     assert ".merge_commit_sha == $sha" in script
+
+
+def _extract_promotion_pr_jq(script: str) -> str:
+    start = script.index("[ .[]")
+    end = script.index("\n  '", start)
+    return script[start:end]
+
+
+def test_upstream_verifier_accepts_unique_same_tree_main_merge_without_dev_head() -> None:
+    script = VERIFY_UPSTREAM.read_text(encoding="utf-8")
+    program = _extract_promotion_pr_jq(script)
+    pulls = (ROOT / "tests" / "fixtures" / "upstream_commit_pulls.json").read_text(
+        encoding="utf-8"
+    )
+    selected = subprocess.check_output(
+        [
+            "jq",
+            "-c",
+            "--arg",
+            "sha",
+            "2a24624e53252bb692572f2e9d940239d1f06b04",
+            "--arg",
+            "repository",
+            "UplixSEO/Uplix-Agents",
+            program,
+        ],
+        input=pulls,
+        text=True,
+    )
+    parsed = json.loads(selected)
+    assert len(parsed) == 1
+    assert parsed[0]["number"] == 523
+    assert parsed[0]["head"]["ref"] == "release-dev-into-main-immutable-bulk-start"
+
+
+def test_upstream_verifier_still_selects_classic_dev_to_main_merge() -> None:
+    script = VERIFY_UPSTREAM.read_text(encoding="utf-8")
+    program = _extract_promotion_pr_jq(script)
+    pulls = (ROOT / "tests" / "fixtures" / "upstream_commit_pulls.json").read_text(
+        encoding="utf-8"
+    )
+    selected = subprocess.check_output(
+        [
+            "jq",
+            "-c",
+            "--arg",
+            "sha",
+            "b89e02359ebec3deab8e6e8fc0f3cd79b98bca88",
+            "--arg",
+            "repository",
+            "UplixSEO/Uplix-Agents",
+            program,
+        ],
+        input=pulls,
+        text=True,
+    )
+    parsed = json.loads(selected)
+    assert len(parsed) == 1
+    assert parsed[0]["number"] == 521
+    assert parsed[0]["head"]["ref"] == "dev"
+
+
+def test_upstream_verifier_rejects_non_unique_main_merge() -> None:
+    script = VERIFY_UPSTREAM.read_text(encoding="utf-8")
+    program = _extract_promotion_pr_jq(script)
+    sha = "2a24624e53252bb692572f2e9d940239d1f06b04"
+    duplicate = {
+        "number": 999,
+        "state": "closed",
+        "merged_at": "2026-08-25T21:05:00Z",
+        "merge_commit_sha": sha,
+        "base": {"ref": "main", "repo": {"full_name": "UplixSEO/Uplix-Agents"}},
+        "head": {"ref": "dev", "repo": {"full_name": "UplixSEO/Uplix-Agents"}},
+    }
+    pulls = json.loads(
+        (ROOT / "tests" / "fixtures" / "upstream_commit_pulls.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    pulls.append(duplicate)
+    selected = subprocess.check_output(
+        [
+            "jq",
+            "-c",
+            "--arg",
+            "sha",
+            sha,
+            "--arg",
+            "repository",
+            "UplixSEO/Uplix-Agents",
+            program,
+        ],
+        input=json.dumps(pulls),
+        text=True,
+    )
+    parsed = json.loads(selected)
+    assert len(parsed) == 2
 
 
 def test_approval_script_accepts_only_exact_seventeen_pending_builds():
