@@ -11,7 +11,9 @@ The private repository's successful `main` guard creates an annotated tag named
 `promote.yml` with that exact tag, and the `production` environment holds each
 release job behind a cancellable wait timer. The production environment
 releases a read-only GitHub App key; the workflow verifies the private tag and
-successful guard run plus the unique merged `dev`-to-`main` PR for that SHA,
+successful guard run plus the unique merged PR into `main` for that SHA
+(usually `dev`; a same-tree reconcile branch is accepted because GitHub cannot
+open a second empty `dev`→`main` PR after that merge),
 exchanges OIDC for the approver-only GCP identity, then approves
 exactly 17 already-pending fixed Cloud Build triggers. It cannot create builds,
 invoke or edit triggers, upload source, impersonate the build service account,

@@ -65,14 +65,13 @@ promotion_pr_json="$(jq -c \
           and .merged_at != null
           and .merge_commit_sha == $sha
           and .base.ref == "main"
-          and .head.ref == "dev"
           and .base.repo.full_name == $repository
           and .head.repo.full_name == $repository
         )
     ]
   ' <<<"${pulls_json}")"
 if [[ "$(jq 'length' <<<"${promotion_pr_json}")" != "1" ]]; then
-  echo "ERROR: exact SHA must be the unique merged Uplix-Agents dev-to-main PR commit." >&2
+  echo "ERROR: exact SHA must be the unique merged Uplix-Agents PR into main." >&2
   exit 1
 fi
 PROMOTION_PR_NUMBER="$(jq -r '.[0].number' <<<"${promotion_pr_json}")"

@@ -1,0 +1,30 @@
+[
+  {
+    "number": 523,
+    "state": "closed",
+    "merged_at": "2026-08-25T21:00:00Z",
+    "merge_commit_sha": "2a24624e53252bb692572f2e9d940239d1f06b04",
+    "base": {
+      "ref": "main",
+      "repo": {"full_name": "UplixSEO/Uplix-Agents"}
+    },
+    "head": {
+      "ref": "release-dev-into-main-immutable-bulk-start",
+      "repo": {"full_name": "UplixSEO/Uplix-Agents"}
+    }
+  },
+  {
+    "number": 521,
+    "state": "closed",
+    "merged_at": "2026-08-24T12:00:00Z",
+    "merge_commit_sha": "b89e02359ebec3deab8e6e8fc0f3cd79b98bca88",
+    "base": {
+      "ref": "main",
+      "repo": {"full_name": "UplixSEO/Uplix-Agents"}
+    },
+    "head": {
+      "ref": "dev",
+      "repo": {"full_name": "UplixSEO/Uplix-Agents"}
+    }
+  }
+]
