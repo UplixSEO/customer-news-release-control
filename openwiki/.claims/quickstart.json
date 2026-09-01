@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2716180ba18122b7d1a5257a058f8525b7acccedb9db4a3a9aa59b6e5ec3bc22",
+  "claims": [
+    {
+      "id": "claim_8372f3d6de4445b89c7885365fe4fe14",
+      "statement": "This public repository is the protected approval boundary for private Customer News source and contains no product source, customer identifiers, build payloads, runtime artifacts, or credentials.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L1-L6",
+          "version": "repo-lines-v1:sha256:7e93e5d8702d610188114862db9f3a50a39929a69b93d8d0a46a6d9500aa708d:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZTM5ZDdiNDhkODQwMTJmOGMwNjVhNzU0YWYzMTJlMjQ1ZmUyY2Q0ZjMwNGM1N2RlMGNhOWVmYjU5NTA2ZmMzNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTFkYzExZGZkOWY1NTI5OGFjMmJmNGE4NTQwODhjMWUwOGI5ZmM4ZGQxNjY2YTJhZDUzYmM0ODk3YWM5NTVmMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzAyNDliMjc1Njc5OTcxYjNiNGRjNTBkMTY0YTk3MDk5ZDRiYjZiNGE3MTBhMTM3ZDFlYjc3OGRiODY3YWNiMCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_5a65ae82577b4e63b8b34d53d9c43180",
+      "statement": "The protected workflow validates an exact private release tag and upstream state, uses a read-only one-repository GitHub App token plus production OIDC authority, and approves exactly 17 already-pending fixed Cloud Build triggers.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/promote.yml#L46-L85",
+          "version": "repo-lines-v1:sha256:9d3dc4307436420a7d6f827f52c9950f75104f5b0a4b66ca4aefaa4fd6e8da23:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImU5ZDgwMTU0ZWQ0MmZjNWM3NzliMTMzMTU3OGI1OGI4OWM4MDFlYWNlNzRmMjRjZDQ4ZWI0YTIzNTc5NDBhOTUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIzZTdlNmZmYmQ2ZWQwYzcwNWM0MTYyZjRhNDRkN2Y4OGZjOWU1ZDMxZTExMmI0NDk3M2M4YzMxYjg1ZGU3ZTEiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE4NmZlOTEwY2NjMzMyZGMwYTc5Y2FhYTZmOTEwMzJmMWRjOGZlOWEwZGU5YThhNDU4YjM4MDIwZTMyM2Y2NTQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM0MTU1N2I4NTY4YWM0M2NmMjFjYmI0M2I4NWFjMGIzNGNkZjFkM2FlNWY0MDkzNTFhNGIxMWExMjJjMjZhZDgifQ"
+        },
+        {
+          "resource": "repo://README.md#L8-L20",
+          "version": "repo-lines-v1:sha256:84d091b8c5aefd877140afe21365484c09c0d47e1805d6da6309e1db8350e24b:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdjOWI1ZmRlYzExZTY4ZTNkYTVmNzM1M2E4OGQ4YjI0YzlkNjM1YjU1OGQwZTYzMTQ0N2I2ZTVmYTk2YjVmMjIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjdhYzQ4MzJjNTg5MmQxMjc3OTIwZmVmYzA3YTlkZDQ1NzJiNGRiOTc4NzFlMjY5YzJmOTU0ZDQ1NDU2MDE1MGQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRjZjFjYTRiNTQwNGUyMTBhZDY0MjExMWVmZTEwZDljYjdjYjFlNThhNjg2ODQwMDA0YjlkY2IwMTBkMDRiMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjEwNTYzN2JmMTIwNWRiMzJiY2I0MmEyYjhhOTBmYzFhYjQxNjhmZmExNDJlZGRlZTNkMzg5NzdjYTIwMjVjMGEifQ"
+        },
+        {
+          "resource": "repo://scripts/approve_pending_release.sh#L14-L30",
+          "version": "repo-lines-v1:sha256:891680b5b751196e12b8c726e0c64ba14d5f763f33ec2c5f1908c805b1925291:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjBmNzQ3YTkwZGVkODMyMzA1YTFiYTZiZTRjNWMxNmQ4NTRkZDA4YzI3Y2IyODI5NGE0N2FjN2MxODQ4ZTQxOTYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijk1NWJlMjE4MWQxNjQ0MWNhNTI2OTVjZWZkOWU4YzBhYjVkNDM0Y2YxMjdmMDNlMDVjZTk2MmU3YmQ3YWVmZGIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjBjZWQxOGM5YzExMDA4NjFlYTJlMzhiYmY1MmJhYjEwYzc3NmZjODE1Yjg3MTRmMDc1YWQ5MWY0NzE2MWI3ZTIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM1NTAwNjk5MjkzZDQxNzExY2MzYTQwMjhiNjY5NDdjYmRiMzA4YTM1NTA1ODk5OWU2NDgxNDhhNDg4NDYzMTgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_1caa7cb6ddb44561a15931054726a8e2",
+      "statement": "Exact-batch approval re-reads tag, SHA, trigger, and status; only PENDING builds are approved, QUEUED, WORKING, and SUCCESS builds are left untouched, and terminal failures fail immediately.",
+      "evidence": [
+        {
+          "resource": "repo://scripts/approve_pending_release.sh#L32-L89",
+          "version": "repo-lines-v1:sha256:1f9fd93745af71a3a0910feae65d0135857e68f16d32e823131fe4285bae89f9:eyJzZWxlY3RlZExpbmVDb3VudCI6NTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImJlMDc4Y2Y1YTc3YjgxNzUxMjhkYzBjNzMyNDExMTVlNzY2NThjYmM0MzgzNjYyZDg0MzRhNTU5Y2ViY2FhNDMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxMTdmYTAwNmJhOTIwODUwMGIyOTMwY2U2OWNiZGU0MzZjNjQ3YWZhOTE3Y2I3Mzk2YTliYzkxMTFhNDZkZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjlmMThmNTgxYzE3MDYyZGE4YWIwYmU0MWZiN2E4OGYwNmM4MzVhMGE2MGMwMTg5N2M2ZWNhYmMxOWRjMjk5YjQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImZiN2U2N2NiYzhiNmRhOTA4YmMxNTA3Mzg3ODE3ZTNjZjY1MWIwZDQ1Zjg1ODhhMDI2OWQ3ODA5ZjFiOTdhNTkifQ"
+        },
+        {
+          "resource": "repo://scripts/approve_pending_release.sh#L91-L130",
+          "version": "repo-lines-v1:sha256:5f54430aa5c2fc2d176b434709797b53b2d4abea1cfbc1479692cb318e01d740:eyJzZWxlY3RlZExpbmVDb3VudCI6NDAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImNmZmU4ZGY4YjM1Mjk3ZmQ4Njk5NzU2ODdkZjIzMzlmYzcxYzcwMTU2Zjc5MWE5ODdkY2Q1NDBmNTc4ZGMzNjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQxMTdmYTAwNmJhOTIwODUwMGIyOTMwY2U2OWNiZGU0MzZjNjQ3YWZhOTE3Y2I3Mzk2YTliYzkxMTFhNDZkZDIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImY5NDY5NzQyNzVmMTJlNDNiOGNjNzU0ZjI1ODIzMjUwNmQ3MWUyZjkxN2E3NTcyN2MyMjgxNmNhMWEyNGJjMDQiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_493efaf80e5c4a91918f6009a5d0e2f3",
+      "statement": "GitHub Deployments are the append-only release ledger, and the pure ledger helper makes deterministic create, resume, already-succeeded, superseded, rollback, and auto-promotion decisions from normalized state and ancestry evidence without I/O.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L108-L121",
+          "version": "repo-lines-v1:sha256:e4412b1b401f054c9b9561195debb2c44c4fa35e761d16d99708471c19941ad5:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImUzYjhiOTY5YTUyNWYwYTVlMjA3Zjc0NTJjODU1MmZjYTAyYWU0YzBkZTg1NTg2OWQ5MWFjOWRkNWUxOTA1NzYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjA5ZDljMjJjZGZhMTg5NzM0Y2Q3ZTk0YTVjYmU3NGNmNGQ1MWMwNWQ2ZWE0NmE3ZWJiMDE4MTE3NzA4NTRiMDQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImE1ODI5NjAwNDljOTdmYjMzNWVhMDEzY2Q2OTRlMzI3NjI2YjE0NjZhMDBlZjRmMmE5ZGZmNDRlZGFkNzNhYzMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
+        },
+        {
+          "resource": "repo://scripts/release_ledger.py#L148-L186",
+          "version": "repo-lines-v1:sha256:df76479466686b1d6bab891bc93e5b26e42bf2844e1d63e8c3b87cecb6d9f7cf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjFlZTUwNTk1YzUxYjQxZDRmYmE1ODVlMDkzYTJjZDgzZWE0ZDQ3MTJiYWMzODlmMzk1NzkwYjM4NjJhMzE5ZDEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImIxOGI5OGRkMzc1ZmM3NzMxYjZkYzUxMWI4MmZiZDRhOTJlNTUzMTUxYTA0MzY0ZDMwOGZiN2ZiNDYxYjE2ZDgiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjRmYmQwMDkzMTRiYzI3MDg0MTY3MzRhMDJhZTVmZjM5YTFlNDhhMDUwYmU5MWY0M2IyZmFhOTIwMDJjNjJiZmMiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjExNzRkODcwZDY5NjY5ZDJmZThkZTQ3M2YzN2ZmNzQwMTdlZDJiMDk5NzcxNjgzN2JlODU2NzQ5ODkyNzlhODcifQ"
+        },
+        {
+          "resource": "repo://scripts/release_ledger.py#L65-L145",
+          "version": "repo-lines-v1:sha256:03b22985f6116b527d6c24ad1f678fa9349fb830fa1c19bc7d015a3576de85f2:eyJzZWxlY3RlZExpbmVDb3VudCI6ODEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjcyM2I3YzVlYmY5ODVkYTk4Y2RlOGZlNDJjYTc3OWEzZDI5ZmY4ZGU2NDM4ZWI2YTQ2ZjMxMzQ4YjE3NTE2MTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQ4OTNmNDBlMzc4MWViODk2YzgyZDA0NmEwODA2N2ExMWUzNWNkZjJmMWRmYWYyNmZlYTkwYjhkYjY2NzY0MTMiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImFiOGNkYWRlMzhkZTFjMGMyYmQzMzc2NjlkMWJkNGQ3M2IwYTZmYjBlNmIzNDA0N2I4YmIxZTdiMzcwZmUxZmYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjcwMjc2YzkyOTI2ZGMyOWFjOTgyOWUxNGM5Nzg1M2NhNmQ4MzlkZWRmMzljYTQ0YTY3ZmVjYzliZTM1ZWUwMzgifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_80c2af78727c4cafab3c2a7dce132051",
+      "statement": "The scheduled poller runs every 30 minutes, uses a read-only private-upstream token, consults the ledger, holds while a promotion is active, and dispatches the exact candidate without OIDC cloud authority.",
+      "evidence": [
+        {
+          "resource": "repo://.github/workflows/auto-promote.yml#L1-L45",
+          "version": "repo-lines-v1:sha256:6ef587e076dc71a40ed87338eada366231566d501a57239f894057c4bec5d8d5:eyJzZWxlY3RlZExpbmVDb3VudCI6NDUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYwZDA1ZjM2YzdiNjY0OWRhZTE4NGU5YzNmYWJiZDZlMzg3NzExZTkyNWMxOGE4MjIzYmE1MDk4YzJjOGU3YmYiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjgxMDM4ZWE3OGRmOTJiZTMxZGFmNzZkODNiM2I4MjcyNjY0MzhkZTQxYjY1MWJjZDg2M2U4ZTM1ZjRlYjllYTgifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/auto-promote.yml#L46-L84",
+          "version": "repo-lines-v1:sha256:00605b7e8052c70b68bd95060766e47c79581dae8374865977ec7370ab91423c:eyJzZWxlY3RlZExpbmVDb3VudCI6MzksImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM0NmQ1ZTYwZDU0Nzk0YmI2MWUzNjg4NjQ5MDYzNWRlZmY0NDgwM2M4ZDEwN2U3ZjUyMTkyODBiNTAwZTQ2YzgiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjNmMjM3NmVlZDQxODk4NDJkODA5Mzc4ZjA5NWRmZWE4MDhjZjRiMWZmNmMwNjI4YTg3ZThiNTIxODk5OTk4NDUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjE4ZTVhZDFjNDdkZDg2ZTYwM2UwYmZmZGM4ZTliZWRmY2IwOTE3MTQ5ZWE0ZDRlOWI5ZmQwZTM4NGRjNzUzNWYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImY1NjcxMmRlNzJmM2FjNzRmMzg5OTliMGNhZGZkZTJkZTdjZTcyMTk5ZDBmZWE5ZTQ2NmUxMWM4YjUzNzNmNjQifQ"
+        },
+        {
+          "resource": "repo://.github/workflows/auto-promote.yml#L93-L127",
+          "version": "repo-lines-v1:sha256:13ad658b89a0a22a63a6100c8a0dbd5f4a70884f6e9ded54ffcf3ce496322f93:eyJzZWxlY3RlZExpbmVDb3VudCI6MzUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImYwZGFhOTIxNTEyZDFhY2ZiYzAxMWI2Y2Y2NWUzNzVmZTZkN2NmNmZlNzI1ZWIwM2E1MGM2MzM5MDhkOWI1ZjAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjM2MjdhMzZiYzU1NzlhNDU2ZWVkMWUwYmUwM2UxYWNkOGY0NzE4ODA1MzA1ZmYyMThlYThlM2M3M2U5NTFhOWYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6Ijg4NGIwMDU0MTlmYTM3NGEzMjRiYzAzZTEzOGJiMjk2MzZkZmFlMTk5NWJiZmU1OGFmMGM3NGUwNDM0MzYzOTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6Ijk0ZGE5OTJlYmRlNzI0NTA2ZDRlZDNhNmZmYzgzMTAyY2NmMGU5MjQyMTc3MDIxMzAyYjBkOGQ5MzFiZDdjODEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_424bc55a5fe542d09d4cab61e0a18351",
+      "statement": "Local verification is pytest plus shell syntax checks; it does not deploy or prove production convergence.",
+      "evidence": [
+        {
+          "resource": "repo://README.md#L89-L95",
+          "version": "repo-lines-v1:sha256:d79060a31b23339c6ea5fc9344cee294bac0cd9a72aa0c3ce28a94a4ee377383:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ2ODBjOTE1ZDkxYjE5ZjQwNTYzNGUzNDEzMjVjZjllYzk2OTdlOWE5Yzc4NGI2YjM0OTA4NzMxMTU0YmI0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjcyMjYyMzBhODVlODJjNWViZGNlZDI1NjQ5YjZlZmE4MDlkZDQ1ODM4ZTI5YTNiNjJkN2ZlZDNjMDQ1NDk4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2NhY2VhNjY1MDQwMWQ3NTJjYWJkYTIxMzMzNjc0YWI2NDM0MTA4NGNkYjA5MzRjNGE4N2Q2YTBiZTIyOGEwZCJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-01T07:53:32.757Z"
+  }
+}
