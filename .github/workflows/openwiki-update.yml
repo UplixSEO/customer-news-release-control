@@ -30,10 +30,13 @@ jobs:
 
       - name: Install OpenWiki
         # mermaid + jsdom are optional; they add high-fidelity validation of Mermaid diagrams. Remove if your wiki has none.
-        run: npm ci --prefix .github/openwiki --ignore-scripts
+        run: |
+          mkdir -p "${RUNNER_TEMP}/openwiki"
+          cp .github/openwiki/package.json .github/openwiki/package-lock.json "${RUNNER_TEMP}/openwiki/"
+          npm ci --prefix "${RUNNER_TEMP}/openwiki"
 
       - name: Run OpenWiki
-        run: .github/openwiki/node_modules/.bin/openwiki code --update --print
+        run: '"${RUNNER_TEMP}/openwiki/node_modules/.bin/openwiki" code --update --print'
         env:
           OPENWIKI_PROVIDER: openai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
