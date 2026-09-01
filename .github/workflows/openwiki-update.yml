@@ -32,8 +32,11 @@ jobs:
         # mermaid + jsdom are optional; they add high-fidelity validation of Mermaid diagrams. Remove if your wiki has none.
         run: |
           mkdir -p "${RUNNER_TEMP}/openwiki"
-          cp .github/openwiki/package.json .github/openwiki/package-lock.json "${RUNNER_TEMP}/openwiki/"
+          git show "${OPENWIKI_WORKFLOW_SHA}:.github/openwiki/package.json" > "${RUNNER_TEMP}/openwiki/package.json"
+          git show "${OPENWIKI_WORKFLOW_SHA}:.github/openwiki/package-lock.json" > "${RUNNER_TEMP}/openwiki/package-lock.json"
           npm ci --prefix "${RUNNER_TEMP}/openwiki"
+        env:
+          OPENWIKI_WORKFLOW_SHA: ${{ github.workflow_sha }}
 
       - name: Run OpenWiki
         run: '"${RUNNER_TEMP}/openwiki/node_modules/.bin/openwiki" code --update --print'
