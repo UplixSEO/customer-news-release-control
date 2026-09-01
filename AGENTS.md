@@ -10,7 +10,7 @@ just-in-time context, not required startup reading.
 - Prefer the narrowest quiet validation that proves the changed behavior.
   Preserve complete failure output.
 
-The scheduled OpenWiki GitHub Actions workflow refreshes the repository wiki.
+OpenWiki refreshes are release-driven through `/ship-uplix-release`; the GitHub Actions workflow is `workflow_dispatch`-only for explicit manual runs. Do not add a scheduled or cron trigger.
 Do not hand-edit generated OpenWiki pages unless explicitly asked; prefer
 updating source code/docs and letting OpenWiki regenerate.
 
