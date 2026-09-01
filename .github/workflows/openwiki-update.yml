@@ -20,6 +20,8 @@ jobs:
           # commit it last documented; a shallow clone hides that commit and the
           # update runs against an empty change summary.
           fetch-depth: 0
+          persist-credentials: false
+          ref: dev
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -28,10 +30,10 @@ jobs:
 
       - name: Install OpenWiki
         # mermaid + jsdom are optional; they add high-fidelity validation of Mermaid diagrams. Remove if your wiki has none.
-        run: npm install --global openwiki@0.4.0 mermaid@11.16.0 jsdom@29.1.1
+        run: npm ci --prefix .github/openwiki --ignore-scripts
 
       - name: Run OpenWiki
-        run: openwiki code --update --print
+        run: .github/openwiki/node_modules/.bin/openwiki code --update --print
         env:
           OPENWIKI_PROVIDER: openai
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -48,6 +50,8 @@ jobs:
       - name: Create OpenWiki update pull request
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          base: dev
+          token: ${{ secrets.GITHUB_TOKEN }}
           add-paths: |
             openwiki
             AGENTS.md
