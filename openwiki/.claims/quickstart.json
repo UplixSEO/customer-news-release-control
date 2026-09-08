@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pageVersion": "sha256:af81ec6ebdeec8295c1535b0ab216019842d5c1bed1c3de88c684e615d4f5b3c",
+  "pageVersion": "sha256:2716180ba18122b7d1a5257a058f8525b7acccedb9db4a3a9aa59b6e5ec3bc22",
   "claims": [
     {
       "id": "claim_8372f3d6de4445b89c7885365fe4fe14",
@@ -89,24 +89,10 @@
           "version": "repo-lines-v1:sha256:d79060a31b23339c6ea5fc9344cee294bac0cd9a72aa0c3ce28a94a4ee377383:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ2ODBjOTE1ZDkxYjE5ZjQwNTYzNGUzNDEzMjVjZjllYzk2OTdlOWE5Yzc4NGI2YjM0OTA4NzMxMTU0YmI0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDdjMDZjNTYxZDVjMzI3MzQzNjg1MjY4YTQ2YjMzOTFmMzk5OGVlZTg5MGQyYmU1MWYwZDIxY2M0YTUzYWU2ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZjcyMjYyMzBhODVlODJjNWViZGNlZDI1NjQ5YjZlZmE4MDlkZDQ1ODM4ZTI5YTNiNjJkN2ZlZDNjMDQ1NDk4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2NhY2VhNjY1MDQwMWQ3NTJjYWJkYTIxMzMzNjc0YWI2NDM0MTA4NGNkYjA5MzRjNGE4N2Q2YTBiZTIyOGEwZCJ9"
         }
       ]
-    },
-    {
-      "id": "claim_f69c10608ac94cbe86634bd3f7a36f0d",
-      "statement": "The OpenWiki update workflow is manual workflow_dispatch-only and has no schedule or cron trigger, independently of the product's scheduled release-control workflow.",
-      "evidence": [
-        {
-          "resource": "repo://.github/workflows/openwiki-update.yml#L1-L5",
-          "version": "repo-lines-v1:sha256:e0e295775511f5ff278611a6dec8f8d81bb1a79a0b7280e40b50bd7f043a8041:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDYwMjc4N2FmNmRjYzA4MzRkZTEyMWNiYjFjYjk1Zjk0NTliNzIxZWFiMDM0OWYxMDUwMWI5OTZjMWM3N2ZmZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGNjNGJiNzlmNmViYzg1NTU5NzVmODdjMWJiZmFkYjQ0ODFmNzBiMDNjMWE3YjBjOWNjYjRlZTNkYWM3N2Q2MSJ9"
-        },
-        {
-          "resource": "repo://.github/workflows/openwiki-update.yml#L54-L70",
-          "version": "repo-lines-v1:sha256:0d1253bfd3b9eb3e8e8dc41a37b1c708b4c2e05a68a4b439437bb4a3a822a8f0:eyJzZWxlY3RlZExpbmVDb3VudCI6MTcsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjQxY2ZmNGFkMzNiYTkxYjE0OGUxYjFiODI5MGI4ZmZmMjdiMjAzZmFiZmVlNTg3MDI4MmRlMzY3MzgzYjFiZTIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMjcwN2JmYjhkODcwMDQ0Njg4ODUyNWM0NTllNTEyNzM4YzEwMjUyYTQxMWIxZmQ3MzYwZjdlYzJjYzRiMjciLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImQxOTEzNzMyNTgyYzNlNjAzNTkwNzg2Yzg2ODM2OTUxZmYzNWU5YjJkMGY4ZDMxMDY3ZDRmNGM4NzQzZGIyYWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjowLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUifQ"
-        }
-      ]
     }
   ],
   "verification": {
-    "by": "openwiki/0.5.0",
-    "at": "2026-09-08T10:07:20.143Z"
+    "by": "openwiki/0.4.0",
+    "at": "2026-09-01T07:53:32.757Z"
   }
 }

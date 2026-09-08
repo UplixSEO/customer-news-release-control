@@ -14,12 +14,10 @@ sources:
     resource: repo://scripts/release_ledger.py
   - id: approve
     resource: repo://scripts/approve_pending_release.sh
-  - id: openwiki-source-6d4b4e707b8d60b6ccfa3425
-    resource: repo://.github/workflows/openwiki-update.yml
 verified:
-  - by: openwiki/0.5.0
-    at: 2026-09-08T10:07:20.143Z
-generated: { by: "hermes", at: "2026-09-08T10:07:20.143Z" }
+  - by: openwiki/0.4.0
+    at: 2026-09-01T07:53:32.757Z
+generated: {by: "codex", at: "2026-09-01T07:53:32.757Z"}
 ---
 
 # Customer News Release Control
@@ -76,11 +74,3 @@ bash -n scripts/*.sh
 Use `authority_probe=true` only for the protected, non-release least-privilege audit documented in
 `README.md`. Promotion and rollback are production mutations and require the environment gate;
 local tests and probes do not constitute deployment proof.
-
-## Generated repository wiki
-
-`openwiki/` is optional just-in-time repository context. The coordinated
-`/ship-uplix-release` flow refreshes it before promotion; the repository's OpenWiki workflow
-is an explicit `workflow_dispatch` fallback and has no schedule or cron trigger. This is
-separate from `auto-promote.yml`, whose scheduled polling is product release-control behavior.
-Update source or hand-written docs instead of generated wiki pages.
