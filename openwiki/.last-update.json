@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-09-01T07:54:41.082Z",
-  "command": "init",
-  "gitHead": "e956b1807beabfdc791c14cd760fc90288824cd9",
-  "model": "host-agent/codex",
+  "updatedAt": "2026-09-08T10:09:07.750Z",
+  "command": "update",
+  "gitHead": "8021b12235cb1850cc07a13da6e42d23546ab0b4",
+  "model": "host-agent/hermes",
   "status": "complete",
   "language": "en"
 }
