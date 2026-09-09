@@ -14,10 +14,14 @@ sources:
     resource: repo://scripts/release_ledger.py
   - id: approve
     resource: repo://scripts/approve_pending_release.sh
+  - id: openwiki-source-cb325c97cf2d7b6c014175fa
+    resource: repo://.github/openwiki/package.json
+  - id: openwiki-source-6d4b4e707b8d60b6ccfa3425
+    resource: repo://.github/workflows/openwiki-update.yml
 verified:
-  - by: openwiki/0.4.0
-    at: 2026-09-01T07:53:32.757Z
-generated: {by: "codex", at: "2026-09-01T07:53:32.757Z"}
+  - by: openwiki/0.5.0
+    at: 2026-09-08T11:03:00.076Z
+generated: { by: "codex", at: "2026-09-08T11:03:00.076Z" }
 ---
 
 # Customer News Release Control
@@ -74,3 +78,11 @@ bash -n scripts/*.sh
 Use `authority_probe=true` only for the protected, non-release least-privilege audit documented in
 `README.md`. Promotion and rollback are production mutations and require the environment gate;
 local tests and probes do not constitute deployment proof.
+
+## Update the wiki
+
+The `OpenWiki Update` workflow is explicitly `workflow_dispatch`-only. It checks out `dev`
+with full history, installs the pinned OpenWiki tool and its Mermaid/jsdom validation dependencies
+under Node.js 22, runs `openwiki code --update --print`, and opens an `openwiki/update` pull request
+against `dev` containing the generated wiki and OpenWiki instruction/workflow files. Dispatch it
+manually when source or documentation changes require a refresh.
