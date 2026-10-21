@@ -1,7 +1,7 @@
-name: AGENTS.md guard
+name: Instruction-file guard
 
-# AGENTS.md is the only per-directory instruction file in this repository.
-# A tracked CLAUDE.md at any level — including .claude/CLAUDE.md — is a defect.
+# The repository carries no per-directory agent instruction file, so a tracked
+# CLAUDE.md at any level — including .claude/CLAUDE.md — is a defect.
 # Vendored `.agents/skills/**` third-party content is intentionally out of scope.
 on:
   pull_request:
