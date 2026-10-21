@@ -1,6 +1,15 @@
 name: OpenWiki Update
 
+# OpenWiki refreshes run on every push to `main`, so a promotion lands the wiki
+# in the same lane, and stay dispatchable for explicit manual runs.
+# `paths-ignore` skips a push whose only changes are the refresh artifacts —
+# the merge of this workflow's own PR — so a run cannot retrigger itself.
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - openwiki/**
+      - .github/workflows/openwiki-update.yml
   workflow_dispatch:
 
 permissions:
