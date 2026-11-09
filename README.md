@@ -58,7 +58,9 @@ intervention. Cancelling delays one attempt only — the poller dispatches
 again on a later cycle while the candidate remains valid. To hold a release
 durably, disable `auto-promote.yml`, roll back (the new epoch pins the
 runtime), or land a superseding candidate. The timer applies to the poller,
-`promote`, and `prove` jobs independently; budget release latency
+`promote`, and `prove` jobs independently; two `waiting` deployments can
+coexist and neither queues the other, while two `promote.yml` runs still
+serialize on `customer-news-production` before the gate. Budget release latency
 accordingly. Merging the private `dev`-to-`main` pull request remains the
 human decision that creates a release candidate.
 
@@ -72,8 +74,9 @@ workflow with `authority_probe=true` and any syntactically inert `release_tag`
 input. After the production environment gate admits the run, the probe
 verifies the App's exact one-repository/read-only boundary and the federated
 identity's effective permissions. Candidate validation and the 17-build
-approval step are skipped in this mode, so no build, release, or deployment is
-started.
+approval step are skipped in this mode: two production gate records are created
+(the `promote` and `proof-audit` gates) but no build, release or ledger
+deployment is started.
 
 The controller also carries fail-closed WIF denial checks. Setting
 `nonproduction_wif_probe=true` on `promote.yml` proves that the exact trusted
@@ -85,6 +88,78 @@ contain no GitHub, Cloud Build, IAM, or storage mutation commands.
 
 Uplix credentials are stored only in Uplix-owned GitHub/GCP control planes.
 Léonard's personal 1Password stack is not a dependency or recovery store.
+
+## When a production run stays waiting
+
+The `production` environment has exactly two protection rules: `branch_policy`
+(the ref must be `main`) and `wait_timer: 15`. There is no `required_reviewers`
+rule, so **nobody approves** a normal release. The timer is the release
+mechanism, and GitHub correctly reports `reviewers: []` and
+`current_user_can_approve: false` in `pending_deployments` while a job waits
+with zero steps. A live `waiting` deployment is the normal shape of the timer,
+not a deadlock; cancelling the run inside the window is the only manual
+intervention.
+
+Each release creates two different records:
+
+* the **production gate record**, created by GitHub when a job with
+  `environment: production` starts (`production_environment: false`, empty
+  payload); it stays `waiting` until the timer elapses, then moves through
+  `queued` and `in_progress`;
+* the **release ledger record**, created by `scripts/github_deployment_ledger.sh`
+  in the `customer-news-runtime` environment (`production_environment: true`,
+  `schema=customer_news_release_v1`); it carries the resume state, stays
+  `in_progress` across failed attempts by design, and becomes `inactive` with
+  `superseded_by=<sha>` only after a descendant succeeds.
+
+An `authority_probe` run creates two production gate records (the `promote` and
+`proof-audit` gates) and no build, release or ledger deployment.
+
+Classify any run or ledger record with the read-only helper
+(already-authenticated `gh`; no writes, and failed API sections are reported in
+`api_errors`):
+
+```bash
+scripts/diagnose_release_gate.sh <run-id>
+scripts/diagnose_release_gate.sh --deployment <deployment-id> [--reference-instant <iso8601>]
+scripts/diagnose_release_gate.sh --fixture <payload.json>
+```
+
+The last line is exactly one verdict; the exit code is 0 (normal), 3 (stuck or
+late) or 2 (record not resolvable):
+
+| Verdict | Meaning | Action |
+| -- | -- | -- |
+| `gate-timer-pending` | live run, no first step, gate elapsed ≤ 17 min, deployment `waiting`/`queued`/`in_progress`/`pending` | none; the timer will admit it |
+| `gate-admitted` | first step exists, admission ≤ 17 min | none |
+| `gate-admitted-late` | first step exists, admission > 17 min | record the delay; the run proceeds |
+| `gate-stuck` | live run, no first step, gate elapsed > 17 min or deployment `error`; the record's status is printed | capture the evidence below, then use the fallback if the release must ship |
+| `run-terminal-residual` | run terminal, deployment `waiting`/`error`, no step | a dead record, not a hold; nothing to release |
+| `ledger-open-record` | ledger status at the reference instant is `pending`/`queued`/`in_progress`/`failure`/`error` | `resumable` (`pending`/`in_progress`/`failure`) → resume the same record; `superseded-only` (`queued`/`error`) → the next attempt creates a new one |
+| `ledger-terminal` | ledger status is `success` or `inactive` | none |
+| `no-deployment` | no matching production gate (`no-production-deployment`), two gates in the window (`ambiguous-production-deployment`, candidate ids listed), or no ledger record (`no-ledger-record`) | pass `--job`, or use the ledger path |
+
+For a genuinely stuck release, capture the run URL, the deployment id and its
+status timeline, the `pending_deployments` payload (`wait_timer`,
+`wait_timer_started_at`, `reviewers`), the build ids and the `approval.result`.
+Then use the documented fallback: `scripts/approve_pending_release.sh`, or for
+an already-created `PENDING` build
+
+```bash
+gcloud alpha builds approve projects/customer-news-475010/locations/europe-west1/builds/<build_id> \
+  --comment="Protected Customer News release <sha>" --quiet
+```
+
+run as `cn-release-approver@customer-news-475010.iam.gserviceaccount.com` (it
+holds `roles/cloudbuild.builds.approver`) or the owner identity with the same
+role. The 2026-11-07 direct approval used the owner identity; it is recorded
+here as precedent, not as the default.
+
+To hold a release durably, use `gh workflow disable auto-promote.yml`, roll
+back (the new epoch pins the runtime), or land a superseding candidate. Two
+`waiting` deployments can coexist and neither queues the other, while two
+`promote.yml` runs still serialize on the `customer-news-production`
+concurrency group before the gate.
 
 ## Local verification
 
@@ -119,3 +194,11 @@ ledger snapshot it returns `dispatch` plus a reason (`no_candidate`,
 Deployment ID; an older candidate becomes inactive only after a proven
 descendant succeeds. Rollback creates a new release-tag epoch and is accepted
 only for a compatibility-approved ancestor with a non-empty reason.
+
+Each release also creates one production gate record per `environment: production`
+job (see §When a production run stays waiting). They are not ledger entries: the
+production gate record has an empty payload and `production_environment: false`,
+while the ledger record carries `schema=customer_news_release_v1` and
+`production_environment: true`. An `authority_probe` run creates two production
+gate records (the `promote` and `proof-audit` gates) and no ledger deployment;
+only reads are performed, so no build, release or ledger deployment is started.
