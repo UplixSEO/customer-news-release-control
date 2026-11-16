@@ -16,7 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        # Was the mutable tag `@v4`, which resolves to v4.4.0 today. A moved tag
+        # executes different code under the same workflow, with no diff here, so it
+        # is pinned — to v4.3.1, the commit the rest of the organisation already
+        # runs. One minor behind, taken deliberately for one shared fleet version.
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: Reject tracked CLAUDE.md
         shell: bash
         run: |
